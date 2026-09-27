@@ -16,6 +16,6 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
-    "dt-sql-parser": "4.5.1"
+    "sqllens": "1.11.0"
   }
 }
