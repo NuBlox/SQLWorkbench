@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import test from "node:test";
 
-import { rendererFailureHtml, verifyRendererBootstrap } from "../dist/electron/main/renderer-bootstrap.js";
+import {
+  rendererFailureHtml,
+  resolveRendererAssetPath,
+  verifyRendererBootstrap,
+} from "../dist/electron/main/renderer-bootstrap.js";
 
 test("renderer bootstrap accepts built renderer and preload assets", async () => {
   const directory = await mkdtemp(join(tmpdir(), "nublox-renderer-bootstrap-"));
@@ -26,6 +30,15 @@ test("renderer bootstrap reports missing build artifacts", async () => {
     assert.match(check.errors[0] ?? "", /Missing renderer HTML/u);
     assert.match(check.errors[1] ?? "", /Missing preload script/u);
   } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test("custom renderer protocol resolves only assets inside the renderer root", () => {
+  const root = resolve("/tmp/nublox-renderer");
+  assert.equal(resolveRendererAssetPath(root, "nublox://app/"), join(root, "index.html"));
+  assert.equal(resolveRendererAssetPath(root, "nublox://app/_app/immutable/start.js"), join(root, "_app/immutable/start.js"));
+  assert.equal(resolveRendererAssetPath(root, "https://app/_app/immutable/start.js"), undefined);
+  assert.equal(resolveRendererAssetPath(root, "nublox://other/_app/immutable/start.js"), undefined);
+  assert.equal(resolveRendererAssetPath(root, "nublox://app/%2e%2e/%2e%2e/secret.txt"), undefined);
 });
 
 test("renderer failure page escapes diagnostic content", () => {
