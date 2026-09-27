@@ -1,4 +1,17 @@
-import type { DatabaseCatalog } from "@nublox/workbench-catalog";
+import type {
+  DatabaseCatalog,
+  DatabaseNamespaceReference,
+  DatabaseNamespaceSummary,
+  DatabaseObjectSummary,
+  DatabasePrincipal,
+  DatabasePrivilege,
+  DatabaseSearchResult,
+  EventDefinition,
+  RoleGrantDefinition,
+  RoutineDefinition,
+  TableDefinition,
+  TriggerDefinition,
+} from "@nublox/workbench-catalog";
 
 export interface CancellationSignal {
   readonly aborted: boolean;
@@ -16,11 +29,14 @@ export interface DatabaseCapabilities {
   readonly procedures: boolean;
   readonly functions: boolean;
   readonly triggers: boolean;
+  readonly events: boolean;
   readonly partitions: boolean;
   readonly transactions: boolean;
   readonly savepoints: boolean;
   readonly explainPlan: boolean;
   readonly queryCancellation: boolean;
+  readonly objectSearch: boolean;
+  readonly privilegeIntrospection: boolean;
   readonly serverAdministration: boolean;
   readonly userAdministration: boolean;
 }
@@ -100,10 +116,62 @@ export interface IntrospectionOptions {
   readonly includeSystem?: boolean;
 }
 
+export interface ExplorerNamespaceOptions {
+  readonly includeSystem?: boolean;
+}
+
+export interface ExplorerObjectReference extends DatabaseNamespaceReference {
+  readonly name: string;
+}
+
+export interface ExplorerSearchRequest {
+  readonly term: string;
+  readonly namespace?: DatabaseNamespaceReference;
+  readonly limit?: number;
+}
+
+export interface DatabaseExplorerProvider {
+  listNamespaces(
+    session: DatabaseSession,
+    options?: ExplorerNamespaceOptions,
+  ): Promise<readonly DatabaseNamespaceSummary[]>;
+  listObjects(
+    session: DatabaseSession,
+    namespace: DatabaseNamespaceReference,
+  ): Promise<readonly DatabaseObjectSummary[]>;
+  describeTable(
+    session: DatabaseSession,
+    object: ExplorerObjectReference,
+  ): Promise<TableDefinition>;
+  listRoutines(
+    session: DatabaseSession,
+    namespace: DatabaseNamespaceReference,
+  ): Promise<readonly RoutineDefinition[]>;
+  listTriggers(
+    session: DatabaseSession,
+    namespace: DatabaseNamespaceReference,
+  ): Promise<readonly TriggerDefinition[]>;
+  listEvents(
+    session: DatabaseSession,
+    namespace: DatabaseNamespaceReference,
+  ): Promise<readonly EventDefinition[]>;
+  listPrincipals(session: DatabaseSession): Promise<readonly DatabasePrincipal[]>;
+  listRoleGrants(session: DatabaseSession): Promise<readonly RoleGrantDefinition[]>;
+  listPrivileges(
+    session: DatabaseSession,
+    grantee?: string,
+  ): Promise<readonly DatabasePrivilege[]>;
+  search(
+    session: DatabaseSession,
+    request: ExplorerSearchRequest,
+  ): Promise<readonly DatabaseSearchResult[]>;
+}
+
 export interface DatabaseProvider {
   readonly id: string;
   readonly displayName: string;
   readonly capabilities: DatabaseCapabilities;
+  readonly explorer?: DatabaseExplorerProvider;
 
   connect(config: DatabaseConnectionConfig): Promise<DatabaseSession>;
   introspect(session: DatabaseSession, options?: IntrospectionOptions): Promise<DatabaseCatalog>;

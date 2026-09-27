@@ -8,10 +8,16 @@ test("quotes MySQL identifiers and escapes embedded backticks", () => {
   assert.equal(provider.quoteIdentifier("order`line"), "`order``line`");
 });
 
-test("declares the implemented initial capability surface", () => {
+test("declares the M2 explorer capability surface", () => {
   const provider = new MySqlDatabaseProvider();
   assert.equal(provider.capabilities.catalogIntrospection, true);
   assert.equal(provider.capabilities.queryCancellation, true);
   assert.equal(provider.capabilities.explainPlan, true);
-  assert.equal(provider.capabilities.procedures, false);
+  assert.equal(provider.capabilities.procedures, true);
+  assert.equal(provider.capabilities.functions, true);
+  assert.equal(provider.capabilities.triggers, true);
+  assert.equal(provider.capabilities.events, true);
+  assert.equal(provider.capabilities.objectSearch, true);
+  assert.equal(provider.capabilities.privilegeIntrospection, true);
+  assert.ok(provider.explorer);
 });
