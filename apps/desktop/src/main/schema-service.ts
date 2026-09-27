@@ -118,6 +118,9 @@ export class DesktopSchemaService {
 
   async #prepare(request: SchemaPreviewRequest): Promise<{ table: TableDefinition; preview: SchemaPreview }> {
     const table = await this.#liveTable(request);
+    if (table.kind !== "table") {
+      throw new Error("Structural migration preview and execution currently support tables only. View definition editing remains read-only in this milestone.");
+    }
     const connection = this.connections.get(request.connectionId);
     const migrations = connection.provider.migrations;
     if (!migrations) {
