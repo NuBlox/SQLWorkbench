@@ -1,0 +1,22 @@
+{
+  "name": "@nublox/workbench-metaobject-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@nublox/metaobject": "github:NuBlox/metaobject#4de98bcf4501ddcee6bd5fd669589db27891a13a",
+    "@nublox/workbench-catalog": "workspace:*"
+  }
+}
