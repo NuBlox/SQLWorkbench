@@ -11,6 +11,8 @@ import type {
   ExplorerSearchRequest,
   ExportResultRequest,
   SaveProfileRequest,
+  SchemaExecuteRequest,
+  SchemaGraphRequest,
   SchemaLoadRequest,
   SchemaPreviewRequest,
 } from "../lib/desktop-api.js";
@@ -35,6 +37,8 @@ const IPC = Object.freeze({
   explorerSearch: "nublox:explorer:search",
   schemaLoad: "nublox:schema:load",
   schemaPreview: "nublox:schema:preview",
+  schemaGraph: "nublox:schema:graph",
+  schemaExecute: "nublox:schema:execute",
   queriesExecute: "nublox:queries:execute",
   queriesCancel: "nublox:queries:cancel",
   historyList: "nublox:history:list",
@@ -70,6 +74,8 @@ const api: DesktopApi = Object.freeze({
   schema: Object.freeze({
     load: (request: SchemaLoadRequest) => ipcRenderer.invoke(IPC.schemaLoad, request),
     preview: (request: SchemaPreviewRequest) => ipcRenderer.invoke(IPC.schemaPreview, request),
+    graph: (request: SchemaGraphRequest) => ipcRenderer.invoke(IPC.schemaGraph, request),
+    execute: (request: SchemaExecuteRequest) => ipcRenderer.invoke(IPC.schemaExecute, request),
   }),
   queries: Object.freeze({
     execute: (request: ExecuteQueryRequest) => ipcRenderer.invoke(IPC.queriesExecute, request),
