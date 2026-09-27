@@ -3,13 +3,18 @@ import test from "node:test";
 
 import { MySqlWorkbenchProvider } from "../dist/workbench.js";
 
-test("Workbench MySQL composition advertises migration and view engineering through provider contracts", () => {
+test("Workbench MySQL composition advertises engineering and administration through provider contracts", () => {
   const provider = new MySqlWorkbenchProvider();
   assert.equal(provider.id, "mysql");
   assert.equal(provider.capabilities.migrationPreview, true);
   assert.equal(provider.capabilities.viewDefinitionEditing, true);
+  assert.equal(provider.capabilities.serverAdministration, true);
+  assert.equal(provider.capabilities.administration?.sessions, true);
+  assert.equal(provider.capabilities.administration?.serverVariables, true);
+  assert.equal(provider.capabilities.administration?.serverStatus, true);
   assert.ok(provider.migrations);
   assert.ok(provider.viewEngineering);
+  assert.ok(provider.administration);
 
   const preview = provider.migrations.preview({
     source: "metaobject",
