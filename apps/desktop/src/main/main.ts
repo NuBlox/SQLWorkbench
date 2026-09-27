@@ -12,6 +12,7 @@ import type {
   ErExecuteRequest,
   ErRelationshipRequest,
   ExecuteQueryRequest,
+  ExplainQueryRequest,
   ExplorerNamespaceRequest,
   ExplorerPrivilegeRequest,
   ExplorerRelationDetailsRequest,
@@ -30,6 +31,7 @@ import type {
 } from "../lib/desktop-api.js";
 import { EncryptedFileCredentialStore, type SecretCipher } from "./encrypted-credential-store.js";
 import { DesktopErService } from "./er-service.js";
+import { DesktopExplainService } from "./explain-service.js";
 import { QueryHistoryStore } from "./query-history-store.js";
 import { DesktopQueryLanguageService } from "./query-language-service.js";
 import { serializeResultSetCsv, serializeResultSetJson } from "./result-export.js";
@@ -66,6 +68,7 @@ const IPC = Object.freeze({
   erPreview: "nublox:er:preview",
   erExecute: "nublox:er:execute",
   queriesExecute: "nublox:queries:execute",
+  queriesExplain: "nublox:queries:explain",
   queriesCancel: "nublox:queries:cancel",
   historyList: "nublox:history:list",
   historyClear: "nublox:history:clear",
@@ -157,6 +160,7 @@ async function createWindow(): Promise<void> {
 
 function registerIpc(desktop: DesktopServices): void {
   const queryLanguage = new DesktopQueryLanguageService(desktop.connections);
+  const explain = new DesktopExplainService(desktop.connections);
   const schema = new DesktopSchemaService(desktop.connections);
   const views = new DesktopViewService(desktop.connections);
   const er = new DesktopErService(desktop.connections);
@@ -188,6 +192,7 @@ function registerIpc(desktop: DesktopServices): void {
   ipcMain.handle(IPC.erPreview, (_event, request: ErRelationshipRequest) => er.preview(request));
   ipcMain.handle(IPC.erExecute, (_event, request: ErExecuteRequest) => er.execute(request));
   ipcMain.handle(IPC.queriesExecute, (_event, request: ExecuteQueryRequest) => desktop.executeQuery(request));
+  ipcMain.handle(IPC.queriesExplain, (_event, request: ExplainQueryRequest) => explain.explain(request));
   ipcMain.handle(IPC.queriesCancel, (_event, executionId: string) => desktop.cancelQuery(executionId));
   ipcMain.handle(IPC.historyList, (_event, limit?: number) => desktop.listHistory(limit));
   ipcMain.handle(IPC.historyClear, () => desktop.clearHistory());
