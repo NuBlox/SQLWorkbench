@@ -22,12 +22,16 @@ import type {
   SchemaGraphRequest,
   SchemaLoadRequest,
   SchemaPreviewRequest,
+  ViewExecuteRequest,
+  ViewLoadRequest,
+  ViewPreviewRequest,
 } from "../lib/desktop-api.js";
 import { EncryptedFileCredentialStore, type SecretCipher } from "./encrypted-credential-store.js";
 import { QueryHistoryStore } from "./query-history-store.js";
 import { serializeResultSetCsv, serializeResultSetJson } from "./result-export.js";
 import { DesktopSchemaService } from "./schema-service.js";
 import { DesktopServices } from "./services.js";
+import { DesktopViewService } from "./view-service.js";
 
 const IPC = Object.freeze({
   profilesList: "nublox:profiles:list",
@@ -51,6 +55,9 @@ const IPC = Object.freeze({
   schemaPreview: "nublox:schema:preview",
   schemaGraph: "nublox:schema:graph",
   schemaExecute: "nublox:schema:execute",
+  viewLoad: "nublox:views:load",
+  viewPreview: "nublox:views:preview",
+  viewExecute: "nublox:views:execute",
   queriesExecute: "nublox:queries:execute",
   queriesCancel: "nublox:queries:cancel",
   historyList: "nublox:history:list",
@@ -143,6 +150,7 @@ async function createWindow(): Promise<void> {
 
 function registerIpc(desktop: DesktopServices): void {
   const schema = new DesktopSchemaService(desktop.connections);
+  const views = new DesktopViewService(desktop.connections);
   ipcMain.handle(IPC.profilesList, () => desktop.listProfiles());
   ipcMain.handle(IPC.profilesSave, (_event, request: SaveProfileRequest) => desktop.saveProfile(request));
   ipcMain.handle(IPC.profilesRemove, (_event, request: DeleteProfileRequest) => desktop.removeProfile(request));
@@ -164,6 +172,9 @@ function registerIpc(desktop: DesktopServices): void {
   ipcMain.handle(IPC.schemaPreview, (_event, request: SchemaPreviewRequest) => schema.preview(request));
   ipcMain.handle(IPC.schemaGraph, (_event, request: SchemaGraphRequest) => schema.graph(request));
   ipcMain.handle(IPC.schemaExecute, (_event, request: SchemaExecuteRequest) => schema.execute(request));
+  ipcMain.handle(IPC.viewLoad, (_event, request: ViewLoadRequest) => views.load(request));
+  ipcMain.handle(IPC.viewPreview, (_event, request: ViewPreviewRequest) => views.preview(request));
+  ipcMain.handle(IPC.viewExecute, (_event, request: ViewExecuteRequest) => views.execute(request));
   ipcMain.handle(IPC.queriesExecute, (_event, request: ExecuteQueryRequest) => desktop.executeQuery(request));
   ipcMain.handle(IPC.queriesCancel, (_event, executionId: string) => desktop.cancelQuery(executionId));
   ipcMain.handle(IPC.historyList, (_event, limit?: number) => desktop.listHistory(limit));
