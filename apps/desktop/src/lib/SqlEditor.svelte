@@ -22,8 +22,7 @@
 
     async function setup(): Promise<void> {
       const workerModule = await import("monaco-editor/esm/vs/editor/editor.worker.js?worker");
-      const monaco = await import("monaco-editor/esm/vs/editor/editor.api.js");
-      await import("monaco-editor/esm/vs/basic-languages/sql/sql.contribution.js");
+      const monaco = await import("monaco-editor");
       if (disposed) return;
 
       const globals = globalThis as typeof globalThis & {
@@ -33,7 +32,7 @@
         getWorker: () => new workerModule.default(),
       };
 
-      editor = monaco.editor.create(host, {
+      const createdEditor = monaco.editor.create(host, {
         value,
         language: "sql",
         theme: "vs-dark",
@@ -51,17 +50,17 @@
         renderWhitespace: "selection",
         padding: { top: 12, bottom: 12 },
       });
+      editor = createdEditor;
 
-      editor.onDidChangeModelContent(() => {
-        if (!editor) return;
+      createdEditor.onDidChangeModelContent(() => {
         internalChange = true;
-        value = editor.getValue();
+        value = createdEditor.getValue();
         queueMicrotask(() => {
           internalChange = false;
         });
       });
 
-      editor.addAction({
+      createdEditor.addAction({
         id: "nublox.run-statement",
         label: "Run current statement",
         keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
