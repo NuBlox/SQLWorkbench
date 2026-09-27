@@ -38,7 +38,7 @@ test("custom renderer protocol resolves only assets inside the renderer root", (
   assert.equal(resolveRendererAssetPath(root, "nublox://app/_app/immutable/start.js"), join(root, "_app/immutable/start.js"));
   assert.equal(resolveRendererAssetPath(root, "https://app/_app/immutable/start.js"), undefined);
   assert.equal(resolveRendererAssetPath(root, "nublox://other/_app/immutable/start.js"), undefined);
-  assert.equal(resolveRendererAssetPath(root, "nublox://app/%2e%2e/%2e%2e/secret.txt"), undefined);
+  assert.equal(resolveRendererAssetPath(root, "nublox://app/%2F..%2F..%2Fsecret.txt"), undefined);
 });
 
 test("renderer failure page escapes diagnostic content", () => {
