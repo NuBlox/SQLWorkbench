@@ -20,7 +20,7 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
-    "@nublox/metaobject": "github:NuBlox/metaobject#4de98bcf4501ddcee6bd5fd669589db27891a13a",
+    "@nublox/metaobject": "1.0.0-rc.1",
     "@nublox/workbench-catalog": "workspace:*",
     "@nublox/workbench-provider-api": "workspace:*"
   }
