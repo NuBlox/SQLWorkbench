@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import AdministrationWorkspace from "$lib/AdministrationWorkspace.svelte";
   import ConnectionsWorkspace from "$lib/ConnectionsWorkspace.svelte";
   import DatabaseExplorer from "$lib/DatabaseExplorer.svelte";
   import ErDesigner from "$lib/ErDesigner.svelte";
@@ -8,7 +9,7 @@
   import ViewDesigner from "$lib/ViewDesigner.svelte";
 
   type Workspace = "Developer" | "DBA" | "Architect" | "Data Engineer" | "Security";
-  type Module = "connections" | "sql" | "explorer" | "schema" | "views" | "er";
+  type Module = "connections" | "sql" | "explorer" | "schema" | "views" | "er" | "administration";
 
   const workspaces: readonly Workspace[] = ["Developer", "DBA", "Architect", "Data Engineer", "Security"];
   let workspace: Workspace = "Developer";
@@ -18,20 +19,26 @@
   $: heading = activeModule === "connections"
     ? { milestone: "M1 · Desktop SQL Development", title: "Connection workspace", description: "Manage database identities and live MySQL sessions." }
     : activeModule === "sql"
-      ? { milestone: "M1 · Desktop SQL Development", title: "SQL Editor", description: "Author, execute, cancel, review and export SQL results." }
+      ? { milestone: "M5 · Query Engineering", title: "SQL Editor", description: "Author, analyse, execute, explain and compare SQL against live catalogue metadata." }
       : activeModule === "explorer"
         ? { milestone: "M2 · Database Explorer", title: "Database Explorer", description: "Browse live database metadata lazily, search objects and inspect security visibility." }
         : activeModule === "schema"
           ? { milestone: "M4 · Schema Engineering", title: "Schema Designer", description: "Reverse-engineer live tables, evolve logical metadata, compare drift and apply guarded provider DDL." }
           : activeModule === "views"
             ? { milestone: "M4 · Schema Engineering", title: "View Designer", description: "Edit live view definitions while preserving provider metadata and guarded execution." }
-            : { milestone: "M4 · Schema Engineering", title: "ER Designer", description: "Arrange the live entity model and create or remove guarded foreign-key relationships." };
+            : activeModule === "er"
+              ? { milestone: "M4 · Schema Engineering", title: "ER Designer", description: "Arrange the live entity model and create or remove guarded foreign-key relationships." }
+              : { milestone: "M6 · Administration & Operations", title: "Administration", description: "Inspect live database processes, global server variables and runtime server status." };
 
-  $: phaseLabel = activeModule === "schema" || activeModule === "views" || activeModule === "er"
-    ? "M4 active"
-    : activeModule === "explorer"
-      ? "M2 complete"
-      : "M1 complete";
+  $: phaseLabel = activeModule === "administration"
+    ? "M6 active"
+    : activeModule === "sql"
+      ? "M5 complete"
+      : activeModule === "schema" || activeModule === "views" || activeModule === "er"
+        ? "M4 complete"
+        : activeModule === "explorer"
+          ? "M2 complete"
+          : "M1 complete";
 
   onMount(() => {
     window.nublox.app.rendererReady();
@@ -55,7 +62,7 @@
       <button class="nav-item" class:active={activeModule === "schema"} type="button" onclick={() => (activeModule = "schema")}><span class="nav-icon">△</span>Schema Designer<small>M4</small></button>
       <button class="nav-item" class:active={activeModule === "views"} type="button" onclick={() => (activeModule = "views")}><span class="nav-icon">▱</span>View Designer<small>M4</small></button>
       <button class="nav-item" class:active={activeModule === "er"} type="button" onclick={() => (activeModule = "er")}><span class="nav-icon">⌘</span>ER Designer<small>M4</small></button>
-      <button class="nav-item" type="button" disabled><span class="nav-icon">◫</span>Administration<small>M6</small></button>
+      <button class="nav-item" class:active={activeModule === "administration"} type="button" onclick={() => (activeModule = "administration")}><span class="nav-icon">◫</span>Administration<small>M6</small></button>
     </nav>
     <div class="sidebar-footer"><span>{workspace}</span>{#if version}<span>v{version}</span>{/if}</div>
   </aside>
@@ -75,8 +82,10 @@
       <SchemaDesigner />
     {:else if activeModule === "views"}
       <ViewDesigner />
-    {:else}
+    {:else if activeModule === "er"}
       <ErDesigner />
+    {:else}
+      <AdministrationWorkspace />
     {/if}
   </main>
 </div>

@@ -12,6 +12,7 @@ import type {
   TableDefinition,
   TriggerDefinition,
 } from "@nublox/workbench-catalog";
+import type { DatabaseAdministrationCapabilities, DatabaseAdministrationProvider } from "./administration.js";
 
 export interface CancellationSignal {
   readonly aborted: boolean;
@@ -39,6 +40,7 @@ export interface DatabaseCapabilities {
   readonly privilegeIntrospection?: boolean;
   readonly migrationPreview?: boolean;
   readonly viewDefinitionEditing?: boolean;
+  readonly administration?: DatabaseAdministrationCapabilities;
   readonly serverAdministration: boolean;
   readonly userAdministration: boolean;
 }
@@ -157,9 +159,19 @@ export interface DatabaseProvider {
   readonly explorer?: DatabaseExplorerProvider;
   readonly migrations?: DatabaseMigrationProvider;
   readonly viewEngineering?: DatabaseViewProvider;
+  readonly administration?: DatabaseAdministrationProvider;
   connect(config: DatabaseConnectionConfig): Promise<DatabaseSession>;
   introspect(session: DatabaseSession, options?: IntrospectionOptions): Promise<DatabaseCatalog>;
   execute(session: DatabaseSession, request: QueryRequest): Promise<QueryExecution>;
   explain(session: DatabaseSession, request: QueryRequest): Promise<ExplainPlan>;
   quoteIdentifier(identifier: string): string;
 }
+
+export type {
+  DatabaseAdministrationCapabilities,
+  DatabaseAdministrationProvider,
+  DatabaseLockWait,
+  DatabaseServerSession,
+  DatabaseServerStatus,
+  DatabaseServerVariable,
+} from "./administration.js";

@@ -83,15 +83,15 @@ The application UX and feature prioritisation should be informed by the database
 
 ## M6 — Administration and operations
 
-- [ ] sessions/processes
+- [x] sessions/processes
 - [ ] locks and blocking
-- [ ] server variables/status
+- [x] server variables/status
 - [ ] users, roles and fine-grained privileges
 - [ ] storage/capacity inspection
 - [ ] import/export
 - [ ] backup/restore hooks where supported
 - [ ] data compare and transfer
-- [ ] provider capability contracts for administration/operations features
+- [x] provider capability contracts for administration/operations features
 
 ## Provider expansion
 

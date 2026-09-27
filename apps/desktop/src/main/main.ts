@@ -8,12 +8,13 @@ import { ConnectionManager, ProviderRegistry } from "@nublox/workbench-core";
 import { MySqlWorkbenchProvider } from "@nublox/workbench-provider-mysql/workbench";
 
 import type {
-  DeleteProfileRequest, ErExecuteRequest, ErRelationshipRequest, ExecuteQueryRequest, ExplainQueryRequest,
+  AdministrationValueRequest, DeleteProfileRequest, ErExecuteRequest, ErRelationshipRequest, ExecuteQueryRequest, ExplainQueryRequest,
   ExplorerNamespaceRequest, ExplorerPrivilegeRequest, ExplorerRelationDetailsRequest, ExplorerRelationRequest,
   ExplorerSearchRequest, ExportResultRequest, ExportResultResponse, QueryPlanHistoryListRequest, QueryStatisticsRequest,
   SaveProfileRequest, SchemaExecuteRequest, SchemaGraphRequest, SchemaLoadRequest, SchemaPreviewRequest,
   ViewExecuteRequest, ViewLoadRequest, ViewPreviewRequest,
 } from "../lib/desktop-api.js";
+import { DesktopAdministrationService } from "./administration-service.js";
 import { EncryptedFileCredentialStore, type SecretCipher } from "./encrypted-credential-store.js";
 import { DesktopErService } from "./er-service.js";
 import { DesktopExplainService } from "./explain-service.js";
@@ -30,6 +31,7 @@ import { DesktopViewService } from "./view-service.js";
 const IPC = Object.freeze({
   profilesList: "nublox:profiles:list", profilesSave: "nublox:profiles:save", profilesRemove: "nublox:profiles:remove", profilesClearCredential: "nublox:profiles:clear-credential",
   connectionsList: "nublox:connections:list", connectionsConnect: "nublox:connections:connect", connectionsDisconnect: "nublox:connections:disconnect",
+  administrationSessions: "nublox:administration:sessions", administrationVariables: "nublox:administration:variables", administrationStatus: "nublox:administration:status",
   explorerNamespaces: "nublox:explorer:namespaces", explorerRelations: "nublox:explorer:relations", explorerDescribe: "nublox:explorer:describe", explorerRoutines: "nublox:explorer:routines", explorerTriggers: "nublox:explorer:triggers", explorerEvents: "nublox:explorer:events", explorerPrincipals: "nublox:explorer:principals", explorerRoles: "nublox:explorer:roles", explorerPrivileges: "nublox:explorer:privileges", explorerSearch: "nublox:explorer:search",
   queryLanguageCatalog: "nublox:query-language:catalog", schemaLoad: "nublox:schema:load", schemaPreview: "nublox:schema:preview", schemaGraph: "nublox:schema:graph", schemaExecute: "nublox:schema:execute",
   viewLoad: "nublox:views:load", viewPreview: "nublox:views:preview", viewExecute: "nublox:views:execute", erPreview: "nublox:er:preview", erExecute: "nublox:er:execute",
@@ -235,6 +237,7 @@ function errorMessage(error: unknown): string { return error instanceof Error ? 
 function registerIpc(desktop: DesktopServices): void {
   const planHistory = new QueryPlanHistoryStore(join(app.getPath("userData"), "query-plan-history.json"));
   const statistics = new QueryStatisticsService(desktop.history, planHistory);
+  const administration = new DesktopAdministrationService(desktop.connections);
   const queryLanguage = new DesktopQueryLanguageService(desktop.connections);
   const explain = new DesktopExplainService(desktop.connections, planHistory, statistics);
   const schema = new DesktopSchemaService(desktop.connections);
@@ -243,6 +246,7 @@ function registerIpc(desktop: DesktopServices): void {
 
   ipcMain.handle(IPC.profilesList, () => desktop.listProfiles()); ipcMain.handle(IPC.profilesSave, (_event, request: SaveProfileRequest) => desktop.saveProfile(request)); ipcMain.handle(IPC.profilesRemove, (_event, request: DeleteProfileRequest) => desktop.removeProfile(request)); ipcMain.handle(IPC.profilesClearCredential, (_event, profileId: string) => desktop.clearCredential(profileId));
   ipcMain.handle(IPC.connectionsList, () => desktop.listConnections()); ipcMain.handle(IPC.connectionsConnect, (_event, profileId: string) => desktop.connectProfile(profileId)); ipcMain.handle(IPC.connectionsDisconnect, (_event, profileId: string) => desktop.disconnectProfile(profileId));
+  ipcMain.handle(IPC.administrationSessions, (_event, connectionId: string) => administration.listSessions(connectionId)); ipcMain.handle(IPC.administrationVariables, (_event, request: AdministrationValueRequest) => administration.listVariables(request.connectionId, request.filter)); ipcMain.handle(IPC.administrationStatus, (_event, request: AdministrationValueRequest) => administration.listStatus(request.connectionId, request.filter));
   ipcMain.handle(IPC.explorerNamespaces, (_event, request: ExplorerNamespaceRequest) => desktop.listExplorerNamespaces(request)); ipcMain.handle(IPC.explorerRelations, (_event, request: ExplorerRelationRequest) => desktop.listExplorerRelations(request)); ipcMain.handle(IPC.explorerDescribe, (_event, request: ExplorerRelationDetailsRequest) => desktop.describeExplorerRelation(request)); ipcMain.handle(IPC.explorerRoutines, (_event, request: ExplorerRelationRequest) => desktop.listExplorerRoutines(request)); ipcMain.handle(IPC.explorerTriggers, (_event, request: ExplorerRelationRequest) => desktop.listExplorerTriggers(request)); ipcMain.handle(IPC.explorerEvents, (_event, request: ExplorerRelationRequest) => desktop.listExplorerEvents(request)); ipcMain.handle(IPC.explorerPrincipals, (_event, connectionId: string) => desktop.listExplorerPrincipals(connectionId)); ipcMain.handle(IPC.explorerRoles, (_event, connectionId: string) => desktop.listExplorerRoleGrants(connectionId)); ipcMain.handle(IPC.explorerPrivileges, (_event, request: ExplorerPrivilegeRequest) => desktop.listExplorerPrivileges(request)); ipcMain.handle(IPC.explorerSearch, (_event, request: ExplorerSearchRequest) => desktop.searchExplorer(request));
   ipcMain.handle(IPC.queryLanguageCatalog, (_event, connectionId: string) => queryLanguage.catalog(connectionId)); ipcMain.handle(IPC.schemaLoad, (_event, request: SchemaLoadRequest) => schema.load(request)); ipcMain.handle(IPC.schemaPreview, (_event, request: SchemaPreviewRequest) => schema.preview(request)); ipcMain.handle(IPC.schemaGraph, (_event, request: SchemaGraphRequest) => schema.graph(request)); ipcMain.handle(IPC.schemaExecute, (_event, request: SchemaExecuteRequest) => schema.execute(request));
   ipcMain.handle(IPC.viewLoad, (_event, request: ViewLoadRequest) => views.load(request)); ipcMain.handle(IPC.viewPreview, (_event, request: ViewPreviewRequest) => views.preview(request)); ipcMain.handle(IPC.viewExecute, (_event, request: ViewExecuteRequest) => views.execute(request)); ipcMain.handle(IPC.erPreview, (_event, request: ErRelationshipRequest) => er.preview(request)); ipcMain.handle(IPC.erExecute, (_event, request: ErExecuteRequest) => er.execute(request));
