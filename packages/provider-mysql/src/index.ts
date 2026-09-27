@@ -153,12 +153,21 @@ export class MySqlDatabaseProvider implements DatabaseProvider {
 
   async introspect(session: DatabaseSession, options: IntrospectionOptions = {}): Promise<DatabaseCatalog> {
     const mysqlSession = requireMySqlSession(session);
+    const depth = options.depth ?? "full";
     const [versionRows] = await mysqlSession.pool.query<VersionRow[]>("SELECT VERSION() AS version");
     const [schemaRows] = await mysqlSession.pool.query<SchemaRow[]>(SCHEMA_SQL);
-    const [tableRows] = await mysqlSession.pool.query<TableRow[]>(TABLE_SQL);
-    const [columnRows] = await mysqlSession.pool.query<ColumnRow[]>(COLUMN_SQL);
-    const [indexRows] = await mysqlSession.pool.query<IndexRow[]>(INDEX_SQL);
-    const [foreignKeyRows] = await mysqlSession.pool.query<ForeignKeyRow[]>(FOREIGN_KEY_SQL);
+    const [tableRows] = depth === "namespaces"
+      ? [[] as TableRow[]]
+      : await mysqlSession.pool.query<TableRow[]>(TABLE_SQL);
+    const [columnRows] = depth === "full"
+      ? await mysqlSession.pool.query<ColumnRow[]>(COLUMN_SQL)
+      : [[] as ColumnRow[]];
+    const [indexRows] = depth === "full"
+      ? await mysqlSession.pool.query<IndexRow[]>(INDEX_SQL)
+      : [[] as IndexRow[]];
+    const [foreignKeyRows] = depth === "full"
+      ? await mysqlSession.pool.query<ForeignKeyRow[]>(FOREIGN_KEY_SQL)
+      : [[] as ForeignKeyRow[]];
 
     const requestedCatalogs = options.catalogs?.length
       ? new Set(options.catalogs.map((value) => value.toLowerCase()))
