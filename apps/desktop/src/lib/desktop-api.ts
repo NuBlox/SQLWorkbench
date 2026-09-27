@@ -3,6 +3,23 @@ import type {
   ConnectionProfile,
   ConnectionProfileDraft,
 } from "@nublox/workbench-connection-profiles";
+import type {
+  ExplorerNamespace,
+  ExplorerNamespaceRequest,
+  ExplorerRelation,
+  ExplorerRelationDetails,
+  ExplorerRelationDetailsRequest,
+  ExplorerRelationRequest,
+} from "@nublox/workbench-core";
+
+export type {
+  ExplorerNamespace,
+  ExplorerNamespaceRequest,
+  ExplorerRelation,
+  ExplorerRelationDetails,
+  ExplorerRelationDetailsRequest,
+  ExplorerRelationRequest,
+} from "@nublox/workbench-core";
 
 export interface SaveProfileRequest {
   readonly draft: ConnectionProfileDraft;
@@ -103,6 +120,11 @@ export interface DesktopApi {
     list(): Promise<readonly OpenConnectionInfo[]>;
     connect(profileId: string): Promise<OpenConnectionInfo>;
     disconnect(profileId: string): Promise<void>;
+  };
+  readonly explorer: {
+    namespaces(request: ExplorerNamespaceRequest): Promise<readonly ExplorerNamespace[]>;
+    relations(request: ExplorerRelationRequest): Promise<readonly ExplorerRelation[]>;
+    describe(request: ExplorerRelationDetailsRequest): Promise<ExplorerRelationDetails>;
   };
   readonly queries: {
     execute(request: ExecuteQueryRequest): Promise<QueryExecutionView>;
