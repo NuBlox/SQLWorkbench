@@ -21,6 +21,10 @@
     "./query-insights": {
       "types": "./dist/query-insights.d.ts",
       "import": "./dist/query-insights.js"
+    },
+    "./query-plan-history": {
+      "types": "./dist/query-plan-history.d.ts",
+      "import": "./dist/query-plan-history.js"
     }
   },
   "scripts": {
