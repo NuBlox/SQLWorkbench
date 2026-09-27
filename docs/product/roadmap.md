@@ -70,9 +70,10 @@ The application UX and feature prioritisation should be informed by the database
 
 ## M5 — Query engineering
 
-- [ ] dialect-aware parser services
-- [ ] completion from live catalogue metadata
-- [ ] linting and diagnostics
+- [x] dialect-aware parser services
+- [x] completion from live catalogue metadata
+- [x] positioned syntax diagnostics
+- [ ] semantic linting and diagnostics
 - [ ] formatting
 - [ ] visual query builder
 - [ ] explain-plan visualization
