@@ -10,17 +10,17 @@ import type {
 export class DesktopAdministrationService {
   constructor(private readonly connections: ConnectionManager) {}
 
-  listSessions(connectionId: string): Promise<readonly DatabaseServerSession[]> {
+  async listSessions(connectionId: string): Promise<readonly DatabaseServerSession[]> {
     const { administration, session } = this.#require(connectionId, "sessions");
     return administration.listSessions(session);
   }
 
-  listVariables(connectionId: string, filter?: string): Promise<readonly DatabaseServerVariable[]> {
+  async listVariables(connectionId: string, filter?: string): Promise<readonly DatabaseServerVariable[]> {
     const { administration, session } = this.#require(connectionId, "serverVariables");
     return administration.listServerVariables(session, normalizeFilter(filter));
   }
 
-  listStatus(connectionId: string, filter?: string): Promise<readonly DatabaseServerStatus[]> {
+  async listStatus(connectionId: string, filter?: string): Promise<readonly DatabaseServerStatus[]> {
     const { administration, session } = this.#require(connectionId, "serverStatus");
     return administration.listServerStatus(session, normalizeFilter(filter));
   }
