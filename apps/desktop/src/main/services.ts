@@ -7,11 +7,18 @@ import type {
 } from "@nublox/workbench-connection-profiles";
 import { ConnectionProfileResolver } from "@nublox/workbench-connection-profiles";
 import type { WorkbenchConnection } from "@nublox/workbench-core";
-import { ConnectionManager, QueryService } from "@nublox/workbench-core";
+import {
+  ConnectionManager,
+  DatabaseExplorerService,
+  QueryService,
+} from "@nublox/workbench-core";
 
 import type {
   DeleteProfileRequest,
   ExecuteQueryRequest,
+  ExplorerNamespaceRequest,
+  ExplorerRelationDetailsRequest,
+  ExplorerRelationRequest,
   OpenConnectionInfo,
   QueryCellValue,
   QueryExecutionView,
@@ -33,6 +40,7 @@ interface ActiveExecution {
 export class DesktopServices {
   readonly #resolver: ConnectionProfileResolver;
   readonly #queries: QueryService;
+  readonly #explorer: DatabaseExplorerService;
   readonly #activeExecutions = new Map<string, ActiveExecution>();
 
   constructor(
@@ -43,6 +51,7 @@ export class DesktopServices {
   ) {
     this.#resolver = new ConnectionProfileResolver(profiles, credentials);
     this.#queries = new QueryService(connections);
+    this.#explorer = new DatabaseExplorerService(connections);
   }
 
   listProfiles(): Promise<readonly ConnectionProfile[]> {
@@ -138,6 +147,18 @@ export class DesktopServices {
     this.#cancelConnectionQueries(profileId);
     if (!this.connections.list().some((connection) => connection.id === profileId)) return;
     await this.connections.disconnect(profileId);
+  }
+
+  listExplorerNamespaces(request: ExplorerNamespaceRequest) {
+    return this.#explorer.listNamespaces(request);
+  }
+
+  listExplorerRelations(request: ExplorerRelationRequest) {
+    return this.#explorer.listRelations(request);
+  }
+
+  describeExplorerRelation(request: ExplorerRelationDetailsRequest) {
+    return this.#explorer.describeRelation(request);
   }
 
   async executeQuery(request: ExecuteQueryRequest): Promise<QueryExecutionView> {
