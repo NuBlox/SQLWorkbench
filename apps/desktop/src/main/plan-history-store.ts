@@ -76,15 +76,20 @@ export class QueryPlanHistoryStore {
 
   async #enqueue<T>(operation: () => Promise<T>): Promise<T> {
     const previous = this.#mutationTail;
-    let release = () => undefined;
+    let release: () => void = () => undefined;
     this.#mutationTail = new Promise<void>((resolve) => { release = resolve; });
     await previous;
     try { return await operation(); } finally { release(); }
   }
 }
 
+/**
+ * Keeps SQL identity semantically conservative: surrounding whitespace and terminal
+ * delimiters do not change identity, while whitespace inside the statement remains
+ * significant because it may occur inside string literals.
+ */
 export function normalizeSqlIdentity(sql: string): string {
-  return sql.trim().replace(/;+\s*$/u, "").replace(/\s+/gu, " ");
+  return sql.trim().replace(/;+\s*$/u, "");
 }
 
 export function fingerprintSql(sql: string): string {
