@@ -1,5 +1,7 @@
 # Product Roadmap
 
+The application UX and feature prioritisation should be informed by the database jobs and personas defined in [`database-personas.md`](database-personas.md).
+
 ## M0 — Foundation
 
 - [x] Monorepo and CI structure
@@ -10,6 +12,7 @@
 - [x] Query service
 - [x] MySQL provider backed by NuBloxSQL
 - [x] MySQL catalogue introspection baseline
+- [x] Database persona and jobs-to-be-done model
 - [ ] Persistent connection-profile model
 - [ ] Secure credential-store abstraction
 
@@ -17,6 +20,7 @@
 
 - Electron desktop shell
 - Svelte renderer
+- persona-aware workspace/navigation model
 - Monaco SQL editor
 - connection selector
 - execute statement / selection / script
@@ -73,10 +77,12 @@
 - sessions/processes
 - locks and blocking
 - server variables/status
-- users and privileges
+- users, roles and fine-grained privileges
+- storage/capacity inspection
 - import/export
 - backup/restore hooks where supported
 - data compare and transfer
+- provider capability contracts for administration/operations features
 
 ## Provider expansion
 

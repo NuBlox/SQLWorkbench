@@ -54,6 +54,8 @@ The provider boundary is capability-driven. Workbench core code must not contain
 
 See [`docs/product/roadmap.md`](docs/product/roadmap.md) for the delivery sequence.
 
+See [`docs/product/database-personas.md`](docs/product/database-personas.md) for the database roles, jobs-to-be-done, capability mapping and persona-oriented workspace model that should shape the application UX.
+
 ## Development
 
 Requirements:
