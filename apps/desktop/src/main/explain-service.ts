@@ -1,8 +1,9 @@
 import { ConnectionManager, QueryService } from "@nublox/workbench-core";
 import { normalizeExplainPlan } from "@nublox/workbench-query-engineering/explain-plan";
 
-import type { ExplainQueryRequest, QueryPlanView } from "../lib/desktop-api.js";
+import type { ExplainQueryRequest, QueryPlanAnalysisView } from "../lib/desktop-api.js";
 import { QueryPlanHistoryStore } from "./plan-history-store.js";
+import { QueryStatisticsService } from "./query-statistics-service.js";
 
 export class DesktopExplainService {
   readonly #queries: QueryService;
@@ -10,11 +11,12 @@ export class DesktopExplainService {
   constructor(
     readonly connections: ConnectionManager,
     readonly history: QueryPlanHistoryStore,
+    readonly statistics: QueryStatisticsService,
   ) {
     this.#queries = new QueryService(connections);
   }
 
-  async explain(request: ExplainQueryRequest): Promise<QueryPlanView> {
+  async explain(request: ExplainQueryRequest): Promise<QueryPlanAnalysisView> {
     const connectionId = requireNonEmpty(request.connectionId, "Connection id");
     const sql = requireNonEmpty(request.sql, "SQL");
     const connection = this.connections.get(connectionId);
@@ -29,14 +31,22 @@ export class DesktopExplainService {
       ...(request.timeoutMs !== undefined ? { timeoutMs: request.timeoutMs } : {}),
     });
     const normalized = normalizeExplainPlan(connection.provider.id, plan.format, plan.raw);
-    await this.history.add({
+    const explainElapsedMs = Date.now() - startedAt;
+    const historyEntry = await this.history.add({
       connectionId,
       sql,
       capturedAt: new Date().toISOString(),
-      explainElapsedMs: Date.now() - startedAt,
+      explainElapsedMs,
       plan: normalized,
     });
-    return normalized;
+    const statistics = await this.statistics.forQuery(connectionId, sql);
+    return {
+      ...normalized,
+      historyEntryId: historyEntry.id,
+      capturedAt: historyEntry.capturedAt,
+      explainElapsedMs,
+      statistics,
+    };
   }
 }
 
