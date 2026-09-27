@@ -3,6 +3,8 @@ import { contextBridge, ipcRenderer } from "electron";
 import type {
   DeleteProfileRequest,
   DesktopApi,
+  ErExecuteRequest,
+  ErRelationshipRequest,
   ExecuteQueryRequest,
   ExplorerNamespaceRequest,
   ExplorerPrivilegeRequest,
@@ -15,6 +17,9 @@ import type {
   SchemaGraphRequest,
   SchemaLoadRequest,
   SchemaPreviewRequest,
+  ViewExecuteRequest,
+  ViewLoadRequest,
+  ViewPreviewRequest,
 } from "../lib/desktop-api.js";
 
 const IPC = Object.freeze({
@@ -39,6 +44,11 @@ const IPC = Object.freeze({
   schemaPreview: "nublox:schema:preview",
   schemaGraph: "nublox:schema:graph",
   schemaExecute: "nublox:schema:execute",
+  viewLoad: "nublox:views:load",
+  viewPreview: "nublox:views:preview",
+  viewExecute: "nublox:views:execute",
+  erPreview: "nublox:er:preview",
+  erExecute: "nublox:er:execute",
   queriesExecute: "nublox:queries:execute",
   queriesCancel: "nublox:queries:cancel",
   historyList: "nublox:history:list",
@@ -76,6 +86,15 @@ const api: DesktopApi = Object.freeze({
     preview: (request: SchemaPreviewRequest) => ipcRenderer.invoke(IPC.schemaPreview, request),
     graph: (request: SchemaGraphRequest) => ipcRenderer.invoke(IPC.schemaGraph, request),
     execute: (request: SchemaExecuteRequest) => ipcRenderer.invoke(IPC.schemaExecute, request),
+  }),
+  views: Object.freeze({
+    load: (request: ViewLoadRequest) => ipcRenderer.invoke(IPC.viewLoad, request),
+    preview: (request: ViewPreviewRequest) => ipcRenderer.invoke(IPC.viewPreview, request),
+    execute: (request: ViewExecuteRequest) => ipcRenderer.invoke(IPC.viewExecute, request),
+  }),
+  er: Object.freeze({
+    preview: (request: ErRelationshipRequest) => ipcRenderer.invoke(IPC.erPreview, request),
+    execute: (request: ErExecuteRequest) => ipcRenderer.invoke(IPC.erExecute, request),
   }),
   queries: Object.freeze({
     execute: (request: ExecuteQueryRequest) => ipcRenderer.invoke(IPC.queriesExecute, request),

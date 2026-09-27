@@ -58,9 +58,9 @@ The application UX and feature prioritisation should be informed by the database
 ## M4 — Schema engineering
 
 - [x] table structural editor
-- [ ] view definition editor
+- [x] view definition editor
 - [x] ER dependency visualization
-- [ ] interactive visual ER modelling
+- [x] interactive visual ER modelling
 - [x] forward engineering
 - [x] schema diff
 - [x] migration generation

@@ -21,6 +21,13 @@ import type {
   ExplorerTrigger,
 } from "@nublox/workbench-core";
 import type {
+  DatabaseMigrationPreview,
+  DatabaseReferentialAction,
+  DatabaseSchemaChangePlan,
+  DatabaseViewChangePlan,
+  DatabaseViewDefinition,
+} from "@nublox/workbench-provider-api";
+import type {
   DependencyGraph,
   SchemaDraftInput,
   SchemaDraftView,
@@ -44,6 +51,16 @@ export type {
   ExplorerSearchResult,
   ExplorerTrigger,
 } from "@nublox/workbench-core";
+export type {
+  DatabaseMigrationPreview,
+  DatabaseReferentialAction,
+  DatabaseSchemaChangePlan,
+  DatabaseViewAlgorithm,
+  DatabaseViewChangePlan,
+  DatabaseViewCheckOption,
+  DatabaseViewDefinition,
+  DatabaseViewSecurityType,
+} from "@nublox/workbench-provider-api";
 export type {
   DependencyEdge,
   DependencyGraph,
@@ -145,6 +162,70 @@ export interface SchemaExecutionResult {
   readonly refreshedDraft?: SchemaDraftView;
 }
 
+export interface ViewLoadRequest extends ExplorerRelationDetailsRequest {}
+export interface ViewPreviewRequest extends ViewLoadRequest {
+  readonly draft: DatabaseViewChangePlan;
+}
+export interface ViewExecutionGuard {
+  readonly fingerprint: string;
+  readonly confirmationPhrase: string;
+}
+export interface ViewPreparedPreview {
+  readonly live: DatabaseViewDefinition;
+  readonly draft: DatabaseViewChangePlan;
+  readonly preview: DatabaseMigrationPreview;
+  readonly guard: ViewExecutionGuard;
+}
+export interface ViewExecuteRequest extends ViewPreviewRequest {
+  readonly fingerprint: string;
+  readonly confirmation: string;
+}
+export interface ViewExecutionResult {
+  readonly completed: boolean;
+  readonly executedStatements: number;
+  readonly totalStatements: number;
+  readonly failedStatementIndex?: number;
+  readonly error?: string;
+  readonly refreshedView?: DatabaseViewDefinition;
+}
+
+interface ErRelationshipBase extends ExplorerRelationRequest {
+  readonly sourceTable: string;
+  readonly foreignKey: string;
+}
+export interface ErAddRelationshipRequest extends ErRelationshipBase {
+  readonly operation: "add";
+  readonly sourceColumns: readonly string[];
+  readonly targetTable: string;
+  readonly targetColumns: readonly string[];
+  readonly onDelete?: DatabaseReferentialAction;
+}
+export interface ErDropRelationshipRequest extends ErRelationshipBase {
+  readonly operation: "drop";
+}
+export type ErRelationshipRequest = ErAddRelationshipRequest | ErDropRelationshipRequest;
+export interface ErExecutionGuard {
+  readonly fingerprint: string;
+  readonly destructive: boolean;
+  readonly confirmationPhrase: string;
+}
+export interface ErPreparedPreview {
+  readonly plan: DatabaseSchemaChangePlan;
+  readonly preview: DatabaseMigrationPreview;
+  readonly guard: ErExecutionGuard;
+}
+export type ErExecuteRequest = ErRelationshipRequest & {
+  readonly fingerprint: string;
+  readonly confirmation: string;
+};
+export interface ErExecutionResult {
+  readonly completed: boolean;
+  readonly executedStatements: number;
+  readonly totalStatements: number;
+  readonly failedStatementIndex?: number;
+  readonly error?: string;
+}
+
 export interface DesktopApi {
   readonly profiles: {
     list(): Promise<readonly ConnectionProfile[]>;
@@ -174,6 +255,15 @@ export interface DesktopApi {
     preview(request: SchemaPreviewRequest): Promise<SchemaPreparedPreview>;
     graph(request: SchemaGraphRequest): Promise<DependencyGraph>;
     execute(request: SchemaExecuteRequest): Promise<SchemaExecutionResult>;
+  };
+  readonly views: {
+    load(request: ViewLoadRequest): Promise<DatabaseViewDefinition>;
+    preview(request: ViewPreviewRequest): Promise<ViewPreparedPreview>;
+    execute(request: ViewExecuteRequest): Promise<ViewExecutionResult>;
+  };
+  readonly er: {
+    preview(request: ErRelationshipRequest): Promise<ErPreparedPreview>;
+    execute(request: ErExecuteRequest): Promise<ErExecutionResult>;
   };
   readonly queries: {
     execute(request: ExecuteQueryRequest): Promise<QueryExecutionView>;
