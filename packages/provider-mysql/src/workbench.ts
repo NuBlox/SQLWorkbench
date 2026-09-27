@@ -14,5 +14,5 @@ export class MySqlWorkbenchProvider extends MySqlDatabaseProvider {
     migrationPreview: true,
   });
 
-  override readonly migrations: DatabaseMigrationProvider = mysqlMigrationProvider;
+  readonly migrations: DatabaseMigrationProvider = mysqlMigrationProvider;
 }
