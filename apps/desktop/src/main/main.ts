@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { app, BrowserWindow, dialog, ipcMain, safeStorage } from "electron";
 import { JsonConnectionProfileRepository } from "@nublox/workbench-connection-profiles";
 import { ConnectionManager, ProviderRegistry } from "@nublox/workbench-core";
-import { MySqlDatabaseProvider } from "@nublox/workbench-provider-mysql";
+import { MySqlWorkbenchProvider } from "@nublox/workbench-provider-mysql/workbench";
 
 import type {
   DeleteProfileRequest,
@@ -69,13 +69,18 @@ app.whenReady().then(async () => {
   services = createServices();
   registerIpc(services);
   await createWindow();
-  app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) void createWindow(); });
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) void createWindow();
+  });
 }).catch((error: unknown) => {
   console.error("Failed to start NuBlox SQL Workbench.", error);
   app.quit();
 });
 
-app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") app.quit();
+});
+
 app.on("before-quit", (event) => {
   if (allowQuit || !services) return;
   event.preventDefault();
@@ -89,10 +94,13 @@ app.on("before-quit", (event) => {
 function createServices(): DesktopServices {
   const userData = app.getPath("userData");
   const profiles = new JsonConnectionProfileRepository(join(userData, "connection-profiles.json"));
-  const credentials = new EncryptedFileCredentialStore(join(userData, "connection-credentials.json"), createSafeStorageCipher());
+  const credentials = new EncryptedFileCredentialStore(
+    join(userData, "connection-credentials.json"),
+    createSafeStorageCipher(),
+  );
   const history = new QueryHistoryStore(join(userData, "query-history.json"));
   const providers = new ProviderRegistry();
-  providers.register(new MySqlDatabaseProvider());
+  providers.register(new MySqlWorkbenchProvider());
   const connections = new ConnectionManager(providers);
   return new DesktopServices(profiles, credentials, connections, history);
 }
@@ -167,14 +175,20 @@ function registerIpc(desktop: DesktopServices): void {
 async function exportResult(request: ExportResultRequest): Promise<ExportResultResponse> {
   const extension = request.format === "csv" ? "csv" : "json";
   const safeName = sanitizeFileName(request.suggestedName || `query-result.${extension}`);
-  const defaultPath = safeName.toLowerCase().endsWith(`.${extension}`) ? safeName : `${safeName}.${extension}`;
+  const defaultPath = safeName.toLowerCase().endsWith(`.${extension}`)
+    ? safeName
+    : `${safeName}.${extension}`;
   const result = await dialog.showSaveDialog({
     title: `Export query results as ${extension.toUpperCase()}`,
     defaultPath,
-    filters: request.format === "csv" ? [{ name: "CSV files", extensions: ["csv"] }] : [{ name: "JSON files", extensions: ["json"] }],
+    filters: request.format === "csv"
+      ? [{ name: "CSV files", extensions: ["csv"] }]
+      : [{ name: "JSON files", extensions: ["json"] }],
   });
   if (result.canceled || !result.filePath) return { canceled: true };
-  const content = request.format === "csv" ? serializeResultSetCsv(request.resultSet) : serializeResultSetJson(request.resultSet);
+  const content = request.format === "csv"
+    ? serializeResultSetCsv(request.resultSet)
+    : serializeResultSetJson(request.resultSet);
   await writeFile(result.filePath, content, { encoding: "utf8", mode: 0o600 });
   return { canceled: false, path: result.filePath };
 }
