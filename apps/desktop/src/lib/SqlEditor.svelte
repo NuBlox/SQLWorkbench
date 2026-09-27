@@ -21,8 +21,9 @@
     });
 
     async function setup(): Promise<void> {
-      const workerModule = await import("monaco-editor/esm/vs/editor/editor.worker?worker");
-      const monaco = await import("monaco-editor");
+      const workerModule = await import("monaco-editor/esm/vs/editor/editor.worker.js?worker");
+      const monaco = await import("monaco-editor/esm/vs/editor/editor.api.js");
+      await import("monaco-editor/esm/vs/basic-languages/sql/sql.contribution.js");
       if (disposed) return;
 
       const globals = globalThis as typeof globalThis & {
