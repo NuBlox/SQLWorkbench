@@ -21,6 +21,7 @@ import type {
   ExplorerTrigger,
 } from "@nublox/workbench-core";
 import type {
+  DependencyGraph,
   SchemaDraftInput,
   SchemaDraftView,
   SchemaPreview,
@@ -44,6 +45,9 @@ export type {
   ExplorerTrigger,
 } from "@nublox/workbench-core";
 export type {
+  DependencyEdge,
+  DependencyGraph,
+  DependencyNode,
   SchemaAttributeDraft,
   SchemaDraftInput,
   SchemaDraftView,
@@ -118,6 +122,28 @@ export interface SchemaLoadRequest extends ExplorerRelationDetailsRequest {}
 export interface SchemaPreviewRequest extends ExplorerRelationDetailsRequest {
   readonly draft: SchemaDraftInput;
 }
+export interface SchemaGraphRequest extends ExplorerRelationRequest {}
+export interface SchemaExecutionGuard {
+  readonly fingerprint: string;
+  readonly destructive: boolean;
+  readonly confirmationPhrase: string;
+}
+export interface SchemaPreparedPreview {
+  readonly preview: SchemaPreview;
+  readonly guard: SchemaExecutionGuard;
+}
+export interface SchemaExecuteRequest extends SchemaPreviewRequest {
+  readonly fingerprint: string;
+  readonly confirmation: string;
+}
+export interface SchemaExecutionResult {
+  readonly completed: boolean;
+  readonly executedStatements: number;
+  readonly totalStatements: number;
+  readonly failedStatementIndex?: number;
+  readonly error?: string;
+  readonly refreshedDraft?: SchemaDraftView;
+}
 
 export interface DesktopApi {
   readonly profiles: {
@@ -145,7 +171,9 @@ export interface DesktopApi {
   };
   readonly schema: {
     load(request: SchemaLoadRequest): Promise<SchemaDraftView>;
-    preview(request: SchemaPreviewRequest): Promise<SchemaPreview>;
+    preview(request: SchemaPreviewRequest): Promise<SchemaPreparedPreview>;
+    graph(request: SchemaGraphRequest): Promise<DependencyGraph>;
+    execute(request: SchemaExecuteRequest): Promise<SchemaExecutionResult>;
   };
   readonly queries: {
     execute(request: ExecuteQueryRequest): Promise<QueryExecutionView>;
