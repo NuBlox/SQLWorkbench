@@ -27,6 +27,7 @@ import type {
   DatabaseViewChangePlan,
   DatabaseViewDefinition,
 } from "@nublox/workbench-provider-api";
+import type { QueryCompletionCatalog } from "@nublox/workbench-query-engineering";
 import type {
   DependencyGraph,
   SchemaDraftInput,
@@ -61,6 +62,12 @@ export type {
   DatabaseViewDefinition,
   DatabaseViewSecurityType,
 } from "@nublox/workbench-provider-api";
+export type {
+  QueryCatalogColumn,
+  QueryCatalogNamespace,
+  QueryCatalogRelation,
+  QueryCompletionCatalog,
+} from "@nublox/workbench-query-engineering";
 export type {
   DependencyEdge,
   DependencyGraph,
@@ -249,6 +256,9 @@ export interface DesktopApi {
     roles(connectionId: string): Promise<readonly ExplorerRoleGrant[]>;
     privileges(request: ExplorerPrivilegeRequest): Promise<readonly ExplorerPrivilege[]>;
     search(request: ExplorerSearchRequest): Promise<readonly ExplorerSearchResult[]>;
+  };
+  readonly queryLanguage: {
+    catalog(connectionId: string): Promise<QueryCompletionCatalog>;
   };
   readonly schema: {
     load(request: SchemaLoadRequest): Promise<SchemaDraftView>;

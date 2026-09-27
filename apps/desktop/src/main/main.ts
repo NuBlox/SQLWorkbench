@@ -31,6 +31,7 @@ import type {
 import { EncryptedFileCredentialStore, type SecretCipher } from "./encrypted-credential-store.js";
 import { DesktopErService } from "./er-service.js";
 import { QueryHistoryStore } from "./query-history-store.js";
+import { DesktopQueryLanguageService } from "./query-language-service.js";
 import { serializeResultSetCsv, serializeResultSetJson } from "./result-export.js";
 import { DesktopSchemaService } from "./schema-service.js";
 import { DesktopServices } from "./services.js";
@@ -54,6 +55,7 @@ const IPC = Object.freeze({
   explorerRoles: "nublox:explorer:roles",
   explorerPrivileges: "nublox:explorer:privileges",
   explorerSearch: "nublox:explorer:search",
+  queryLanguageCatalog: "nublox:query-language:catalog",
   schemaLoad: "nublox:schema:load",
   schemaPreview: "nublox:schema:preview",
   schemaGraph: "nublox:schema:graph",
@@ -154,6 +156,7 @@ async function createWindow(): Promise<void> {
 }
 
 function registerIpc(desktop: DesktopServices): void {
+  const queryLanguage = new DesktopQueryLanguageService(desktop.connections);
   const schema = new DesktopSchemaService(desktop.connections);
   const views = new DesktopViewService(desktop.connections);
   const er = new DesktopErService(desktop.connections);
@@ -174,6 +177,7 @@ function registerIpc(desktop: DesktopServices): void {
   ipcMain.handle(IPC.explorerRoles, (_event, connectionId: string) => desktop.listExplorerRoleGrants(connectionId));
   ipcMain.handle(IPC.explorerPrivileges, (_event, request: ExplorerPrivilegeRequest) => desktop.listExplorerPrivileges(request));
   ipcMain.handle(IPC.explorerSearch, (_event, request: ExplorerSearchRequest) => desktop.searchExplorer(request));
+  ipcMain.handle(IPC.queryLanguageCatalog, (_event, connectionId: string) => queryLanguage.catalog(connectionId));
   ipcMain.handle(IPC.schemaLoad, (_event, request: SchemaLoadRequest) => schema.load(request));
   ipcMain.handle(IPC.schemaPreview, (_event, request: SchemaPreviewRequest) => schema.preview(request));
   ipcMain.handle(IPC.schemaGraph, (_event, request: SchemaGraphRequest) => schema.graph(request));
