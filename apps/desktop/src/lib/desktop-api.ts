@@ -97,5 +97,5 @@ export interface DesktopApi {
   readonly planHistory: { list(request?: QueryPlanHistoryListRequest): Promise<readonly QueryPlanHistoryEntry[]>; clear(): Promise<void>; };
   readonly statistics: { forQuery(request: QueryStatisticsRequest): Promise<QueryStatisticsView>; };
   readonly results: { export(request: ExportResultRequest): Promise<ExportResultResponse>; };
-  readonly app: { version(): Promise<string>; };
+  readonly app: { version(): Promise<string>; rendererReady(): void; };
 }
