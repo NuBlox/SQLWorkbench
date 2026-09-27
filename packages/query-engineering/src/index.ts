@@ -1,4 +1,10 @@
-import { MySQL } from "dt-sql-parser";
+import {
+  Schema,
+  SqlSession,
+  statementSpans,
+  type Completion,
+  type SchemaMapping,
+} from "sqllens";
 
 export type SqlDialectId = "mysql";
 
@@ -60,7 +66,16 @@ export interface QueryCompletionCatalog {
   readonly namespaces: readonly QueryCatalogNamespace[];
 }
 
-export type SqlCompletionKind = "keyword" | "catalog" | "schema" | "table" | "view" | "column";
+export type SqlCompletionKind =
+  | "keyword"
+  | "catalog"
+  | "schema"
+  | "table"
+  | "view"
+  | "column"
+  | "cte"
+  | "function"
+  | "template";
 
 export interface SqlCompletionItem {
   readonly label: string;
@@ -93,214 +108,191 @@ export function createQueryLanguageService(providerId: string): QueryLanguageSer
 
 export class MySqlQueryLanguageService implements QueryLanguageService {
   readonly dialect: SqlDialectId = "mysql";
-  readonly #parser = new MySQL();
 
   parse(sql: string, position?: SqlPosition): SqlParseResult {
-    const diagnostics = this.#parser.validate(sql).map((error) => ({
-      severity: "error" as const,
-      source: "parser" as const,
-      message: error.message,
-      startLineNumber: error.startLine,
-      startColumn: error.startColumn,
-      endLineNumber: error.endLine,
-      endColumn: error.endColumn,
-    }));
+    const session = SqlSession.create(sql, this.dialect);
+    const diagnostics: SqlDiagnostic[] = session.syntaxDiagnostics.map((diagnostic) => {
+      const startColumn = diagnostic.column + 1;
+      return {
+        severity: "error",
+        source: "parser",
+        message: diagnostic.message,
+        startLineNumber: diagnostic.line,
+        startColumn,
+        endLineNumber: diagnostic.line,
+        endColumn: startColumn + Math.max(diagnostic.length, 1),
+      };
+    });
 
-    const slices = diagnostics.length === 0 ? this.#parser.splitSQLByStatement(sql) ?? [] : [];
-    const statements: SqlStatement[] = slices.map((slice) => ({
-      text: slice.text,
-      startLineNumber: slice.startLine,
-      startColumn: slice.startColumn,
-      endLineNumber: slice.endLine,
-      endColumn: slice.endColumn,
-    }));
+    const statements: SqlStatement[] = statementSpans(sql, this.dialect)
+      .map((span) => {
+        const start = offsetToPosition(sql, span.start);
+        const end = offsetToPosition(sql, span.end);
+        return {
+          text: sql.slice(span.start, span.end),
+          startLineNumber: start.lineNumber,
+          startColumn: start.column,
+          endLineNumber: end.lineNumber,
+          endColumn: end.column,
+        };
+      })
+      .filter((statement) => statement.text.trim().length > 0);
 
     return {
       dialect: this.dialect,
       diagnostics,
       statements,
-      entities: this.#entities(sql, position),
+      entities: sourceEntities(session, position ? positionToOffset(sql, position) : undefined),
     };
   }
 
   complete(sql: string, position: SqlPosition, catalog?: QueryCompletionCatalog): readonly SqlCompletionItem[] {
-    const suggestions = this.#parser.getSuggestionAtCaretPosition(sql, position);
-    const items: SqlCompletionItem[] = [];
+    const schema = catalog && catalog.providerId.trim().toLowerCase() === "mysql"
+      ? new Schema(toMySqlSchema(catalog))
+      : undefined;
+    const session = SqlSession.create(sql, this.dialect, schema ? { schema } : {});
+    const offset = positionToOffset(sql, position);
+    const completions = session.completeAt(offset);
+    const result: SqlCompletionItem[] = [];
     const seen = new Set<string>();
 
-    for (const keyword of suggestions?.keywords ?? []) {
-      appendCompletion(items, seen, {
-        label: keyword,
-        insertText: keyword,
-        kind: "keyword",
-        detail: "SQL keyword",
-        sortText: `90:${keyword}`,
-      });
-    }
-
-    if (!catalog || catalog.providerId.trim().toLowerCase() !== "mysql") return items;
-
-    const syntaxContexts = new Set(
-      (suggestions?.syntax ?? []).map((item) => String(item.syntaxContextType).toLowerCase()),
-    );
-    const entities = this.#entities(sql, position).filter((entity) => entity.inActiveStatement);
-    const lexicalContext = completionLexicalContext(sql, position);
-    const wantsRelations = hasContext(syntaxContexts, ["table", "view"]) || lexicalContext === "relation";
-    const wantsColumns = hasContext(syntaxContexts, ["column", "field"]) || lexicalContext === "column";
-    const wantsNamespaces = hasContext(syntaxContexts, ["database", "schema", "catalog"]);
-
-    if (wantsNamespaces) appendNamespaces(items, seen, catalog);
-    if (wantsRelations) appendRelations(items, seen, catalog);
-    if (wantsColumns) appendColumns(items, seen, catalog, entities, currentQualifier(sql, position));
-
-    if (!wantsNamespaces && !wantsRelations && !wantsColumns) {
-      appendRelations(items, seen, catalog);
-    }
-
-    return items;
-  }
-
-  #entities(sql: string, position?: SqlPosition): SqlEntityReference[] {
-    const rawEntities = this.#parser.getAllEntities(sql, position) as readonly unknown[];
-    const result: SqlEntityReference[] = [];
-    for (const value of rawEntities) {
-      const record = asRecord(value);
-      const text = typeof record?.text === "string" ? record.text : undefined;
-      if (!text) continue;
-      const belongStmt = asRecord(record?.belongStmt);
-      const alias = typeof record?.alias === "string" && record.alias ? record.alias : undefined;
-      const type = typeof record?.entityContextType === "string" ? record.entityContextType : "unknown";
-      result.push({
-        kind: entityKind(type),
-        name: unquoteIdentifier(text),
-        ...(alias ? { alias: unquoteIdentifier(alias) } : {}),
-        inActiveStatement: Boolean(belongStmt?.isContainCaret),
-      });
+    for (const completion of completions) {
+      const item = normalizeCompletion(completion, catalog);
+      const key = `${item.kind}\u001f${item.label}\u001f${item.detail ?? ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(item);
     }
     return result;
   }
 }
 
-function appendNamespaces(items: SqlCompletionItem[], seen: Set<string>, catalog: QueryCompletionCatalog): void {
-  for (const namespace of catalog.namespaces) {
-    const name = namespace.catalog ?? namespace.schema ?? namespace.label;
-    const kind: SqlCompletionKind = namespace.catalog ? "catalog" : "schema";
-    appendCompletion(items, seen, {
-      label: name,
-      insertText: name,
-      kind,
-      detail: namespace.label,
-      sortText: `20:${name}`,
-    });
-  }
-}
-
-function appendRelations(items: SqlCompletionItem[], seen: Set<string>, catalog: QueryCompletionCatalog): void {
-  for (const namespace of catalog.namespaces) {
-    for (const relation of namespace.relations) {
-      appendCompletion(items, seen, {
-        label: relation.name,
-        insertText: relation.name,
-        kind: relation.kind,
-        detail: `${relation.kind} · ${namespace.label}`,
-        sortText: `10:${relation.name}`,
+function sourceEntities(session: SqlSession, offset?: number): SqlEntityReference[] {
+  const scope = offset === undefined ? session.scopes.root : session.scopeAt(offset) ?? session.scopes.root;
+  const result: SqlEntityReference[] = [];
+  for (const entry of scope.sourceList) {
+    const source = entry.source;
+    if (source.kind === "table") {
+      const name = source.name[source.name.length - 1] ?? entry.key;
+      result.push({
+        kind: "table",
+        name,
+        ...(entry.key && entry.key.toLowerCase() !== name.toLowerCase() ? { alias: entry.key } : {}),
+        inActiveStatement: true,
       });
+    } else if (source.kind === "cte") {
+      result.push({ kind: "table", name: entry.key, inActiveStatement: true });
     }
+  }
+  return result;
+}
+
+function normalizeCompletion(completion: Completion, catalog?: QueryCompletionCatalog): SqlCompletionItem {
+  const relation = completion.kind === "table" ? findRelation(catalog, completion.label) : undefined;
+  const namespace = completion.kind === "namespace" ? findNamespace(catalog, completion.label) : undefined;
+  const kind: SqlCompletionKind = relation?.kind
+    ?? (namespace ? (namespace.catalog ? "catalog" : "schema") : mapCompletionKind(completion.kind));
+  const detail = completion.detail
+    ?? (relation ? `${relation.kind} · ${relation.namespace}` : undefined)
+    ?? (namespace?.label);
+  return {
+    label: completion.label,
+    insertText: completion.label,
+    kind,
+    ...(detail ? { detail } : {}),
+    sortText: `${completionRank(kind)}:${completion.label.toLowerCase()}`,
+  };
+}
+
+function mapCompletionKind(kind: Completion["kind"]): SqlCompletionKind {
+  switch (kind) {
+    case "keyword": return "keyword";
+    case "column": return "column";
+    case "table": return "table";
+    case "cte": return "cte";
+    case "namespace": return "schema";
+    case "function": return "function";
+    case "template": return "template";
   }
 }
 
-function appendColumns(
-  items: SqlCompletionItem[],
-  seen: Set<string>,
-  catalog: QueryCompletionCatalog,
-  entities: readonly SqlEntityReference[],
-  qualifier?: string,
-): void {
-  const activeRelations = new Set(
-    entities
-      .filter((entity) => entity.kind === "table" || entity.kind === "view")
-      .flatMap((entity) => [entity.name, ...(entity.alias ? [entity.alias] : [])])
-      .map((name) => name.toLowerCase()),
-  );
+function completionRank(kind: SqlCompletionKind): string {
+  switch (kind) {
+    case "column": return "00";
+    case "table":
+    case "view":
+    case "cte": return "10";
+    case "catalog":
+    case "schema": return "20";
+    case "function": return "30";
+    case "keyword": return "90";
+    case "template": return "95";
+  }
+}
 
+function findRelation(
+  catalog: QueryCompletionCatalog | undefined,
+  label: string,
+): { kind: "table" | "view"; namespace: string } | undefined {
+  if (!catalog) return undefined;
+  const normalized = label.toLowerCase();
   for (const namespace of catalog.namespaces) {
+    const relation = namespace.relations.find((candidate) => candidate.name.toLowerCase() === normalized);
+    if (relation) return { kind: relation.kind, namespace: namespace.label };
+  }
+  return undefined;
+}
+
+function findNamespace(catalog: QueryCompletionCatalog | undefined, label: string): QueryCatalogNamespace | undefined {
+  const normalized = label.toLowerCase();
+  return catalog?.namespaces.find((namespace) =>
+    namespace.catalog?.toLowerCase() === normalized
+    || namespace.schema?.toLowerCase() === normalized
+    || namespace.label.toLowerCase() === normalized);
+}
+
+function toMySqlSchema(catalog: QueryCompletionCatalog): SchemaMapping {
+  const mapping: SchemaMapping = {};
+  for (const namespace of catalog.namespaces) {
+    const namespaceName = namespace.schema ?? namespace.catalog;
+    const target = namespaceName ? ensureMapping(mapping, namespaceName) : mapping;
     for (const relation of namespace.relations) {
-      const relationMatchesQualifier = qualifier
-        ? relation.name.toLowerCase() === qualifier.toLowerCase()
-          || entities.some((entity) => entity.name.toLowerCase() === relation.name.toLowerCase() && entity.alias?.toLowerCase() === qualifier.toLowerCase())
-        : true;
-      if (!relationMatchesQualifier) continue;
-      if (!qualifier && activeRelations.size > 0 && !activeRelations.has(relation.name.toLowerCase())) continue;
+      const columns: Record<string, string> = {};
       for (const column of relation.columns) {
-        appendCompletion(items, seen, {
-          label: column.name,
-          insertText: column.name,
-          kind: "column",
-          detail: `${relation.name}.${column.name}${column.databaseType ? ` · ${column.databaseType}` : column.dataType ? ` · ${column.dataType}` : ""}`,
-          sortText: `00:${column.name}`,
-        });
+        columns[column.name] = column.databaseType ?? column.dataType ?? "unknown";
       }
+      target[relation.name] = columns;
     }
   }
+  return mapping;
 }
 
-function appendCompletion(items: SqlCompletionItem[], seen: Set<string>, item: SqlCompletionItem): void {
-  const key = `${item.kind}\u001f${item.label}\u001f${item.detail ?? ""}`;
-  if (seen.has(key)) return;
-  seen.add(key);
-  items.push(item);
+function ensureMapping(mapping: SchemaMapping, key: string): SchemaMapping {
+  const current = mapping[key];
+  if (typeof current === "object" && current !== null && !("nullable" in current)) return current as SchemaMapping;
+  const created: SchemaMapping = {};
+  mapping[key] = created;
+  return created;
 }
 
-function completionLexicalContext(sql: string, position: SqlPosition): "relation" | "column" | "unknown" {
-  const before = textBeforePosition(sql, position);
-  if (/\b(?:from|join|update|into|table)\s+(?:[`"\w$]+\.)?[`"\w$]*$/iu.test(before)) return "relation";
-  if (/\b(?:select|where|having|on|set|by|and|or)\b[^;]*$/iu.test(before)) return "column";
-  return "unknown";
-}
-
-function currentQualifier(sql: string, position: SqlPosition): string | undefined {
-  const before = textBeforePosition(sql, position);
-  const match = /([`"]?[A-Za-z_$][\w$]*[`"]?)\.[A-Za-z0-9_$]*$/u.exec(before);
-  return match?.[1] ? unquoteIdentifier(match[1]) : undefined;
-}
-
-function textBeforePosition(sql: string, position: SqlPosition): string {
-  const lines = sql.split(/\r?\n/u);
-  const lineIndex = Math.max(0, position.lineNumber - 1);
-  const beforeLines = lines.slice(0, lineIndex);
-  const line = lines[lineIndex] ?? "";
-  return [...beforeLines, line.slice(0, Math.max(0, position.column - 1))].join("\n");
-}
-
-function hasContext(contexts: ReadonlySet<string>, fragments: readonly string[]): boolean {
-  for (const context of contexts) {
-    if (fragments.some((fragment) => context.includes(fragment))) return true;
+function positionToOffset(sql: string, position: SqlPosition): number {
+  const targetLine = Math.max(position.lineNumber, 1);
+  const targetColumn = Math.max(position.column, 1);
+  let line = 1;
+  let index = 0;
+  while (line < targetLine && index < sql.length) {
+    const char = sql[index++];
+    if (char === "\n") line += 1;
   }
-  return false;
+  return Math.min(index + targetColumn - 1, sql.length);
 }
 
-function entityKind(value: string): SqlEntityKind {
-  const normalized = value.toLowerCase();
-  if (normalized.includes("table")) return "table";
-  if (normalized.includes("view")) return "view";
-  if (normalized.includes("column") || normalized.includes("field")) return "column";
-  if (normalized.includes("database") || normalized.includes("catalog")) return "database";
-  if (normalized.includes("schema")) return "schema";
-  return "unknown";
-}
-
-function unquoteIdentifier(value: string): string {
-  const trimmed = value.trim();
-  if (trimmed.length >= 2) {
-    const first = trimmed[0];
-    const last = trimmed[trimmed.length - 1];
-    if ((first === "`" && last === "`") || (first === '"' && last === '"')) return trimmed.slice(1, -1);
-  }
-  return trimmed;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : undefined;
+function offsetToPosition(sql: string, offset: number): SqlPosition {
+  const bounded = Math.min(Math.max(offset, 0), sql.length);
+  const before = sql.slice(0, bounded);
+  const lines = before.split("\n");
+  return {
+    lineNumber: lines.length,
+    column: (lines[lines.length - 1]?.replace(/\r$/u, "").length ?? 0) + 1,
+  };
 }
