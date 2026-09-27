@@ -24,7 +24,7 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
-    "@nublox/mysql": "github:NuBlox/NuBloxSQL#0134f576dfdea35b2ac14b10ab2279562f5176ea",
+    "@nublox/mysql": "3.1.0-rc.1",
     "@nublox/workbench-catalog": "workspace:*",
     "@nublox/workbench-provider-api": "workspace:*"
   }
