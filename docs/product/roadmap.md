@@ -79,7 +79,7 @@ The application UX and feature prioritisation should be informed by the database
 - [x] formatting
 - [x] visual query builder
 - [x] explain-plan visualization
-- [ ] query statistics and plan history
+- [x] query statistics and plan history
 
 ## M6 — Administration and operations
 
