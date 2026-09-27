@@ -4,7 +4,6 @@ import {
   QueryService,
   type ConnectionManager,
 } from "@nublox/workbench-core";
-import { mysqlMigrationProvider } from "@nublox/workbench-provider-mysql/migration";
 import {
   createSchemaDraft,
   dependencyGraph,
@@ -91,9 +90,11 @@ export class DesktopSchemaService {
 
     let executedStatements = 0;
     for (let index = 0; index < statements.length; index += 1) {
-      const statement = statements[index]!;
       try {
-        await this.#queries.execute(request.connectionId, { sql: statement, mode: "text" });
+        await this.#queries.execute(request.connectionId, {
+          sql: statements[index]!,
+          mode: "text",
+        });
         executedStatements += 1;
       } catch (error) {
         return {
@@ -118,10 +119,14 @@ export class DesktopSchemaService {
   async #prepare(request: SchemaPreviewRequest): Promise<{ table: TableDefinition; preview: SchemaPreview }> {
     const table = await this.#liveTable(request);
     const connection = this.connections.get(request.connectionId);
-    if (connection.provider.id !== "mysql") {
-      throw new Error(`Database provider '${connection.provider.id}' does not yet provide schema migration previews.`);
+    const migrations = connection.provider.migrations;
+    if (!migrations) {
+      throw new Error(`Database provider '${connection.provider.id}' does not provide schema migration previews.`);
     }
-    return { table, preview: previewSchemaDraft(table, request.draft, mysqlMigrationProvider) };
+    return {
+      table,
+      preview: previewSchemaDraft(table, request.draft, migrations),
+    };
   }
 
   async #safeReload(request: SchemaLoadRequest): Promise<{ refreshedDraft?: SchemaDraftView }> {
