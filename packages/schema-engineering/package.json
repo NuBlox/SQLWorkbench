@@ -1,0 +1,23 @@
+{
+  "name": "@nublox/workbench-schema-engineering",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@nublox/workbench-catalog": "workspace:*",
+    "@nublox/workbench-metaobject-bridge": "workspace:*",
+    "@nublox/workbench-provider-api": "workspace:*"
+  }
+}
