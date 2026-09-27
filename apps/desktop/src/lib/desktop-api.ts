@@ -28,6 +28,7 @@ import type {
   DatabaseViewDefinition,
 } from "@nublox/workbench-provider-api";
 import type { QueryCompletionCatalog } from "@nublox/workbench-query-engineering";
+import type { QueryPlanView } from "@nublox/workbench-query-engineering/explain-plan";
 import type {
   DependencyGraph,
   SchemaDraftInput,
@@ -68,6 +69,11 @@ export type {
   QueryCatalogRelation,
   QueryCompletionCatalog,
 } from "@nublox/workbench-query-engineering";
+export type {
+  QueryPlanNode,
+  QueryPlanProperty,
+  QueryPlanView,
+} from "@nublox/workbench-query-engineering/explain-plan";
 export type {
   DependencyEdge,
   DependencyGraph,
@@ -123,6 +129,11 @@ export interface ExecuteQueryRequest {
   readonly connectionId: string;
   readonly sql: string;
   readonly mode: QueryRunMode;
+  readonly timeoutMs?: number;
+}
+export interface ExplainQueryRequest {
+  readonly connectionId: string;
+  readonly sql: string;
   readonly timeoutMs?: number;
 }
 export type QueryHistoryStatus = "success" | "error" | "cancelled";
@@ -277,6 +288,7 @@ export interface DesktopApi {
   };
   readonly queries: {
     execute(request: ExecuteQueryRequest): Promise<QueryExecutionView>;
+    explain(request: ExplainQueryRequest): Promise<QueryPlanView>;
     cancel(executionId: string): Promise<boolean>;
   };
   readonly history: {

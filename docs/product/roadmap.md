@@ -78,7 +78,7 @@ The application UX and feature prioritisation should be informed by the database
 - [x] semantic linting and diagnostics
 - [x] formatting
 - [ ] visual query builder
-- [ ] explain-plan visualization
+- [x] explain-plan visualization
 - [ ] query statistics and plan history
 
 ## M6 — Administration and operations
