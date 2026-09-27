@@ -149,100 +149,70 @@ export interface QueryHistoryEntry {
   readonly resultSetCount: number;
   readonly message?: string;
 }
+export interface QueryPlanHistoryEntry {
+  readonly id: string;
+  readonly connectionId: string;
+  readonly sql: string;
+  readonly sqlFingerprint: string;
+  readonly capturedAt: string;
+  readonly explainElapsedMs: number;
+  readonly plan: QueryPlanView;
+}
+export interface QueryPlanHistoryListRequest {
+  readonly connectionId?: string;
+  readonly sqlFingerprint?: string;
+  readonly limit?: number;
+}
+export interface QueryStatisticsRequest {
+  readonly connectionId: string;
+  readonly sql: string;
+}
+export interface QueryStatisticsView {
+  readonly connectionId: string;
+  readonly sqlFingerprint: string;
+  readonly executionCount: number;
+  readonly successCount: number;
+  readonly errorCount: number;
+  readonly cancelledCount: number;
+  readonly averageElapsedMs?: number;
+  readonly minimumElapsedMs?: number;
+  readonly maximumElapsedMs?: number;
+  readonly lastExecutedAt?: string;
+  readonly explainCount: number;
+  readonly lastExplainedAt?: string;
+  readonly latestExplainElapsedMs?: number;
+  readonly latestPlanNodeCount?: number;
+  readonly latestPlanCost?: number;
+  readonly previousPlanCost?: number;
+  readonly planCostDelta?: number;
+}
 export type ExportFormat = "csv" | "json";
 export interface ExportResultRequest { readonly format: ExportFormat; readonly suggestedName: string; readonly resultSet: QueryResultSetView; }
 export interface ExportResultResponse { readonly canceled: boolean; readonly path?: string; }
 
 export interface SchemaLoadRequest extends ExplorerRelationDetailsRequest {}
-export interface SchemaPreviewRequest extends ExplorerRelationDetailsRequest {
-  readonly draft: SchemaDraftInput;
-}
+export interface SchemaPreviewRequest extends ExplorerRelationDetailsRequest { readonly draft: SchemaDraftInput; }
 export interface SchemaGraphRequest extends ExplorerRelationRequest {}
-export interface SchemaExecutionGuard {
-  readonly fingerprint: string;
-  readonly destructive: boolean;
-  readonly confirmationPhrase: string;
-}
-export interface SchemaPreparedPreview {
-  readonly preview: SchemaPreview;
-  readonly guard: SchemaExecutionGuard;
-}
-export interface SchemaExecuteRequest extends SchemaPreviewRequest {
-  readonly fingerprint: string;
-  readonly confirmation: string;
-}
-export interface SchemaExecutionResult {
-  readonly completed: boolean;
-  readonly executedStatements: number;
-  readonly totalStatements: number;
-  readonly failedStatementIndex?: number;
-  readonly error?: string;
-  readonly refreshedDraft?: SchemaDraftView;
-}
+export interface SchemaExecutionGuard { readonly fingerprint: string; readonly destructive: boolean; readonly confirmationPhrase: string; }
+export interface SchemaPreparedPreview { readonly preview: SchemaPreview; readonly guard: SchemaExecutionGuard; }
+export interface SchemaExecuteRequest extends SchemaPreviewRequest { readonly fingerprint: string; readonly confirmation: string; }
+export interface SchemaExecutionResult { readonly completed: boolean; readonly executedStatements: number; readonly totalStatements: number; readonly failedStatementIndex?: number; readonly error?: string; readonly refreshedDraft?: SchemaDraftView; }
 
 export interface ViewLoadRequest extends ExplorerRelationDetailsRequest {}
-export interface ViewPreviewRequest extends ViewLoadRequest {
-  readonly draft: DatabaseViewChangePlan;
-}
-export interface ViewExecutionGuard {
-  readonly fingerprint: string;
-  readonly confirmationPhrase: string;
-}
-export interface ViewPreparedPreview {
-  readonly live: DatabaseViewDefinition;
-  readonly draft: DatabaseViewChangePlan;
-  readonly preview: DatabaseMigrationPreview;
-  readonly guard: ViewExecutionGuard;
-}
-export interface ViewExecuteRequest extends ViewPreviewRequest {
-  readonly fingerprint: string;
-  readonly confirmation: string;
-}
-export interface ViewExecutionResult {
-  readonly completed: boolean;
-  readonly executedStatements: number;
-  readonly totalStatements: number;
-  readonly failedStatementIndex?: number;
-  readonly error?: string;
-  readonly refreshedView?: DatabaseViewDefinition;
-}
+export interface ViewPreviewRequest extends ViewLoadRequest { readonly draft: DatabaseViewChangePlan; }
+export interface ViewExecutionGuard { readonly fingerprint: string; readonly confirmationPhrase: string; }
+export interface ViewPreparedPreview { readonly live: DatabaseViewDefinition; readonly draft: DatabaseViewChangePlan; readonly preview: DatabaseMigrationPreview; readonly guard: ViewExecutionGuard; }
+export interface ViewExecuteRequest extends ViewPreviewRequest { readonly fingerprint: string; readonly confirmation: string; }
+export interface ViewExecutionResult { readonly completed: boolean; readonly executedStatements: number; readonly totalStatements: number; readonly failedStatementIndex?: number; readonly error?: string; readonly refreshedView?: DatabaseViewDefinition; }
 
-interface ErRelationshipBase extends ExplorerRelationRequest {
-  readonly sourceTable: string;
-  readonly foreignKey: string;
-}
-export interface ErAddRelationshipRequest extends ErRelationshipBase {
-  readonly operation: "add";
-  readonly sourceColumns: readonly string[];
-  readonly targetTable: string;
-  readonly targetColumns: readonly string[];
-  readonly onDelete?: DatabaseReferentialAction;
-}
-export interface ErDropRelationshipRequest extends ErRelationshipBase {
-  readonly operation: "drop";
-}
+interface ErRelationshipBase extends ExplorerRelationRequest { readonly sourceTable: string; readonly foreignKey: string; }
+export interface ErAddRelationshipRequest extends ErRelationshipBase { readonly operation: "add"; readonly sourceColumns: readonly string[]; readonly targetTable: string; readonly targetColumns: readonly string[]; readonly onDelete?: DatabaseReferentialAction; }
+export interface ErDropRelationshipRequest extends ErRelationshipBase { readonly operation: "drop"; }
 export type ErRelationshipRequest = ErAddRelationshipRequest | ErDropRelationshipRequest;
-export interface ErExecutionGuard {
-  readonly fingerprint: string;
-  readonly destructive: boolean;
-  readonly confirmationPhrase: string;
-}
-export interface ErPreparedPreview {
-  readonly plan: DatabaseSchemaChangePlan;
-  readonly preview: DatabaseMigrationPreview;
-  readonly guard: ErExecutionGuard;
-}
-export type ErExecuteRequest = ErRelationshipRequest & {
-  readonly fingerprint: string;
-  readonly confirmation: string;
-};
-export interface ErExecutionResult {
-  readonly completed: boolean;
-  readonly executedStatements: number;
-  readonly totalStatements: number;
-  readonly failedStatementIndex?: number;
-  readonly error?: string;
-}
+export interface ErExecutionGuard { readonly fingerprint: string; readonly destructive: boolean; readonly confirmationPhrase: string; }
+export interface ErPreparedPreview { readonly plan: DatabaseSchemaChangePlan; readonly preview: DatabaseMigrationPreview; readonly guard: ErExecutionGuard; }
+export type ErExecuteRequest = ErRelationshipRequest & { readonly fingerprint: string; readonly confirmation: string; };
+export interface ErExecutionResult { readonly completed: boolean; readonly executedStatements: number; readonly totalStatements: number; readonly failedStatementIndex?: number; readonly error?: string; }
 
 export interface DesktopApi {
   readonly profiles: {
@@ -268,9 +238,7 @@ export interface DesktopApi {
     privileges(request: ExplorerPrivilegeRequest): Promise<readonly ExplorerPrivilege[]>;
     search(request: ExplorerSearchRequest): Promise<readonly ExplorerSearchResult[]>;
   };
-  readonly queryLanguage: {
-    catalog(connectionId: string): Promise<QueryCompletionCatalog>;
-  };
+  readonly queryLanguage: { catalog(connectionId: string): Promise<QueryCompletionCatalog>; };
   readonly schema: {
     load(request: SchemaLoadRequest): Promise<SchemaDraftView>;
     preview(request: SchemaPreviewRequest): Promise<SchemaPreparedPreview>;
@@ -282,19 +250,15 @@ export interface DesktopApi {
     preview(request: ViewPreviewRequest): Promise<ViewPreparedPreview>;
     execute(request: ViewExecuteRequest): Promise<ViewExecutionResult>;
   };
-  readonly er: {
-    preview(request: ErRelationshipRequest): Promise<ErPreparedPreview>;
-    execute(request: ErExecuteRequest): Promise<ErExecutionResult>;
-  };
+  readonly er: { preview(request: ErRelationshipRequest): Promise<ErPreparedPreview>; execute(request: ErExecuteRequest): Promise<ErExecutionResult>; };
   readonly queries: {
     execute(request: ExecuteQueryRequest): Promise<QueryExecutionView>;
     explain(request: ExplainQueryRequest): Promise<QueryPlanView>;
     cancel(executionId: string): Promise<boolean>;
   };
-  readonly history: {
-    list(limit?: number): Promise<readonly QueryHistoryEntry[]>;
-    clear(): Promise<void>;
-  };
+  readonly history: { list(limit?: number): Promise<readonly QueryHistoryEntry[]>; clear(): Promise<void>; };
+  readonly planHistory: { list(request?: QueryPlanHistoryListRequest): Promise<readonly QueryPlanHistoryEntry[]>; clear(): Promise<void>; };
+  readonly statistics: { forQuery(request: QueryStatisticsRequest): Promise<QueryStatisticsView>; };
   readonly results: { export(request: ExportResultRequest): Promise<ExportResultResponse>; };
   readonly app: { version(): Promise<string>; };
 }
