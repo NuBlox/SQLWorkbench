@@ -7,7 +7,7 @@ import {
   ER_DESTRUCTIVE_CONFIRMATION,
   erExecutionFingerprint,
   requiredErConfirmation,
-} from "../dist/main/er-execution-guard.js";
+} from "../dist/electron/main/er-execution-guard.js";
 
 const source = {
   relation: { key: "demo\u001f\u001forders", catalog: "demo", name: "orders", kind: "table" },
