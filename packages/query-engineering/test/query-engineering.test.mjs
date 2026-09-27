@@ -40,6 +40,7 @@ test("MySQL parser returns positioned syntax diagnostics", () => {
   assert.equal(result.dialect, "mysql");
   assert.ok(result.diagnostics.length > 0);
   assert.equal(result.diagnostics[0].severity, "error");
+  assert.equal(result.diagnostics[0].source, "parser");
   assert.ok(result.diagnostics[0].startLineNumber >= 1);
   assert.ok(result.diagnostics[0].startColumn >= 1);
 });
@@ -52,6 +53,23 @@ test("parser exposes valid statement boundaries and entities", () => {
   assert.equal(result.statements.length, 1);
   assert.match(result.statements[0].text, /SELECT c\.id/u);
   assert.ok(result.entities.some((entity) => entity.name === "customers"));
+});
+
+test("live catalogue diagnostics identify unknown columns", () => {
+  const service = new MySqlQueryLanguageService();
+  const result = service.parse("SELECT missing_column FROM customers;", undefined, catalog);
+  const diagnostic = result.diagnostics.find((item) => item.source === "catalog");
+  assert.ok(diagnostic);
+  assert.match(diagnostic.message, /missing_column|unknown/i);
+  assert.equal(diagnostic.severity, "warning");
+});
+
+test("live catalogue diagnostics identify unknown relations", () => {
+  const service = new MySqlQueryLanguageService();
+  const result = service.parse("SELECT id FROM missing_table;", undefined, catalog);
+  const diagnostic = result.diagnostics.find((item) => item.source === "catalog");
+  assert.ok(diagnostic);
+  assert.match(diagnostic.message, /missing_table|unknown/i);
 });
 
 test("completion combines grammar candidates with live catalogue relations", () => {
@@ -69,6 +87,14 @@ test("qualified completion narrows live columns to the referenced relation", () 
   const items = service.complete(sql, position, catalog);
   assert.ok(items.some((item) => item.kind === "column" && item.label === "email"));
   assert.ok(!items.some((item) => item.kind === "view"));
+});
+
+test("formatter applies MySQL-aware stable formatting", () => {
+  const service = new MySqlQueryLanguageService();
+  const formatted = service.format("select id,email from customers where id=1;");
+  assert.match(formatted, /SELECT\s+id,/u);
+  assert.match(formatted, /FROM\s+customers/u);
+  assert.match(formatted, /WHERE\s+id = 1/u);
 });
 
 test("provider resolver is dialect aware and rejects unsupported providers", () => {
