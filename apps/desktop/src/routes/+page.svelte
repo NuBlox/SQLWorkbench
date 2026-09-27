@@ -2,11 +2,13 @@
   import { onMount } from "svelte";
   import ConnectionsWorkspace from "$lib/ConnectionsWorkspace.svelte";
   import DatabaseExplorer from "$lib/DatabaseExplorer.svelte";
+  import ErDesigner from "$lib/ErDesigner.svelte";
   import SchemaDesigner from "$lib/SchemaDesigner.svelte";
   import SqlWorkspace from "$lib/SqlWorkspace.svelte";
+  import ViewDesigner from "$lib/ViewDesigner.svelte";
 
   type Workspace = "Developer" | "DBA" | "Architect" | "Data Engineer" | "Security";
-  type Module = "connections" | "sql" | "explorer" | "schema";
+  type Module = "connections" | "sql" | "explorer" | "schema" | "views" | "er";
 
   const workspaces: readonly Workspace[] = ["Developer", "DBA", "Architect", "Data Engineer", "Security"];
   let workspace: Workspace = "Developer";
@@ -19,9 +21,17 @@
       ? { milestone: "M1 · Desktop SQL Development", title: "SQL Editor", description: "Author, execute, cancel, review and export SQL results." }
       : activeModule === "explorer"
         ? { milestone: "M2 · Database Explorer", title: "Database Explorer", description: "Browse live database metadata lazily, search objects and inspect security visibility." }
-        : { milestone: "M4 · Schema Engineering", title: "Schema Designer", description: "Reverse-engineer live tables, evolve logical metadata, compare drift and preview provider DDL." };
+        : activeModule === "schema"
+          ? { milestone: "M4 · Schema Engineering", title: "Schema Designer", description: "Reverse-engineer live tables, evolve logical metadata, compare drift and apply guarded provider DDL." }
+          : activeModule === "views"
+            ? { milestone: "M4 · Schema Engineering", title: "View Designer", description: "Edit live view definitions while preserving provider metadata and guarded execution." }
+            : { milestone: "M4 · Schema Engineering", title: "ER Designer", description: "Arrange the live entity model and create or remove guarded foreign-key relationships." };
 
-  $: phaseLabel = activeModule === "schema" ? "M4 active" : activeModule === "explorer" ? "M2 complete" : "M1 complete";
+  $: phaseLabel = activeModule === "schema" || activeModule === "views" || activeModule === "er"
+    ? "M4 active"
+    : activeModule === "explorer"
+      ? "M2 complete"
+      : "M1 complete";
 
   onMount(() => { void window.nublox.app.version().then((value) => { version = value; }); });
 </script>
@@ -40,6 +50,8 @@
       <button class="nav-item" class:active={activeModule === "sql"} type="button" onclick={() => (activeModule = "sql")}><span class="nav-icon">⌘</span>SQL Editor</button>
       <button class="nav-item" class:active={activeModule === "explorer"} type="button" onclick={() => (activeModule = "explorer")}><span class="nav-icon">◇</span>Database Explorer</button>
       <button class="nav-item" class:active={activeModule === "schema"} type="button" onclick={() => (activeModule = "schema")}><span class="nav-icon">△</span>Schema Designer<small>M4</small></button>
+      <button class="nav-item" class:active={activeModule === "views"} type="button" onclick={() => (activeModule = "views")}><span class="nav-icon">▱</span>View Designer<small>M4</small></button>
+      <button class="nav-item" class:active={activeModule === "er"} type="button" onclick={() => (activeModule = "er")}><span class="nav-icon">⌘</span>ER Designer<small>M4</small></button>
       <button class="nav-item" type="button" disabled><span class="nav-icon">◫</span>Administration<small>M6</small></button>
     </nav>
     <div class="sidebar-footer"><span>{workspace}</span>{#if version}<span>v{version}</span>{/if}</div>
@@ -56,8 +68,12 @@
       <SqlWorkspace />
     {:else if activeModule === "explorer"}
       <DatabaseExplorer />
-    {:else}
+    {:else if activeModule === "schema"}
       <SchemaDesigner />
+    {:else if activeModule === "views"}
+      <ViewDesigner />
+    {:else}
+      <ErDesigner />
     {/if}
   </main>
 </div>
