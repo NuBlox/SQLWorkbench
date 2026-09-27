@@ -5,7 +5,7 @@ import {
   assertViewExecutionGuard,
   VIEW_CONFIRMATION,
   viewExecutionFingerprint,
-} from "../dist/main/view-execution-guard.js";
+} from "../dist/electron/main/view-execution-guard.js";
 
 const live = {
   catalog: "demo",
