@@ -175,6 +175,9 @@
       case "column": return monaco.languages.CompletionItemKind.Field;
       case "table": return monaco.languages.CompletionItemKind.Struct;
       case "view": return monaco.languages.CompletionItemKind.Interface;
+      case "cte": return monaco.languages.CompletionItemKind.Variable;
+      case "function": return monaco.languages.CompletionItemKind.Function;
+      case "template": return monaco.languages.CompletionItemKind.Snippet;
       case "catalog":
       case "schema": return monaco.languages.CompletionItemKind.Module;
     }
