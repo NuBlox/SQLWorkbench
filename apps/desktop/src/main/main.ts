@@ -18,6 +18,8 @@ import type {
   ExportResultRequest,
   ExportResultResponse,
   SaveProfileRequest,
+  SchemaExecuteRequest,
+  SchemaGraphRequest,
   SchemaLoadRequest,
   SchemaPreviewRequest,
 } from "../lib/desktop-api.js";
@@ -47,6 +49,8 @@ const IPC = Object.freeze({
   explorerSearch: "nublox:explorer:search",
   schemaLoad: "nublox:schema:load",
   schemaPreview: "nublox:schema:preview",
+  schemaGraph: "nublox:schema:graph",
+  schemaExecute: "nublox:schema:execute",
   queriesExecute: "nublox:queries:execute",
   queriesCancel: "nublox:queries:cancel",
   historyList: "nublox:history:list",
@@ -150,6 +154,8 @@ function registerIpc(desktop: DesktopServices): void {
   ipcMain.handle(IPC.explorerSearch, (_event, request: ExplorerSearchRequest) => desktop.searchExplorer(request));
   ipcMain.handle(IPC.schemaLoad, (_event, request: SchemaLoadRequest) => schema.load(request));
   ipcMain.handle(IPC.schemaPreview, (_event, request: SchemaPreviewRequest) => schema.preview(request));
+  ipcMain.handle(IPC.schemaGraph, (_event, request: SchemaGraphRequest) => schema.graph(request));
+  ipcMain.handle(IPC.schemaExecute, (_event, request: SchemaExecuteRequest) => schema.execute(request));
   ipcMain.handle(IPC.queriesExecute, (_event, request: ExecuteQueryRequest) => desktop.executeQuery(request));
   ipcMain.handle(IPC.queriesCancel, (_event, executionId: string) => desktop.cancelQuery(executionId));
   ipcMain.handle(IPC.historyList, (_event, limit?: number) => desktop.listHistory(limit));
