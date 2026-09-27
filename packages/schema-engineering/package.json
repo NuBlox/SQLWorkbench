@@ -1,5 +1,5 @@
 {
-  "name": "@nublox/workbench-provider-mysql",
+  "name": "@nublox/workbench-schema-engineering",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,14 +9,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./migration": {
-      "types": "./dist/migration.d.ts",
-      "import": "./dist/migration.js"
-    },
-    "./workbench": {
-      "types": "./dist/workbench.d.ts",
-      "import": "./dist/workbench.js"
     }
   },
   "scripts": {
@@ -24,8 +16,8 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
-    "@nublox/mysql": "3.1.0-rc.1",
     "@nublox/workbench-catalog": "workspace:*",
+    "@nublox/workbench-metaobject-bridge": "workspace:*",
     "@nublox/workbench-provider-api": "workspace:*"
   }
 }

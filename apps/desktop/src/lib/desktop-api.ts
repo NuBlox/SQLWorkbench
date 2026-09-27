@@ -20,6 +20,12 @@ import type {
   ExplorerSearchResult,
   ExplorerTrigger,
 } from "@nublox/workbench-core";
+import type {
+  DependencyGraph,
+  SchemaDraftInput,
+  SchemaDraftView,
+  SchemaPreview,
+} from "@nublox/workbench-schema-engineering";
 
 export type {
   ExplorerEvent,
@@ -38,6 +44,17 @@ export type {
   ExplorerSearchResult,
   ExplorerTrigger,
 } from "@nublox/workbench-core";
+export type {
+  DependencyEdge,
+  DependencyGraph,
+  DependencyNode,
+  SchemaAttributeDraft,
+  SchemaDraftInput,
+  SchemaDraftView,
+  SchemaIndexDraft,
+  SchemaPreview,
+  SchemaRelationshipDraft,
+} from "@nublox/workbench-schema-engineering";
 
 export interface SaveProfileRequest {
   readonly draft: ConnectionProfileDraft;
@@ -101,6 +118,33 @@ export type ExportFormat = "csv" | "json";
 export interface ExportResultRequest { readonly format: ExportFormat; readonly suggestedName: string; readonly resultSet: QueryResultSetView; }
 export interface ExportResultResponse { readonly canceled: boolean; readonly path?: string; }
 
+export interface SchemaLoadRequest extends ExplorerRelationDetailsRequest {}
+export interface SchemaPreviewRequest extends ExplorerRelationDetailsRequest {
+  readonly draft: SchemaDraftInput;
+}
+export interface SchemaGraphRequest extends ExplorerRelationRequest {}
+export interface SchemaExecutionGuard {
+  readonly fingerprint: string;
+  readonly destructive: boolean;
+  readonly confirmationPhrase: string;
+}
+export interface SchemaPreparedPreview {
+  readonly preview: SchemaPreview;
+  readonly guard: SchemaExecutionGuard;
+}
+export interface SchemaExecuteRequest extends SchemaPreviewRequest {
+  readonly fingerprint: string;
+  readonly confirmation: string;
+}
+export interface SchemaExecutionResult {
+  readonly completed: boolean;
+  readonly executedStatements: number;
+  readonly totalStatements: number;
+  readonly failedStatementIndex?: number;
+  readonly error?: string;
+  readonly refreshedDraft?: SchemaDraftView;
+}
+
 export interface DesktopApi {
   readonly profiles: {
     list(): Promise<readonly ConnectionProfile[]>;
@@ -124,6 +168,12 @@ export interface DesktopApi {
     roles(connectionId: string): Promise<readonly ExplorerRoleGrant[]>;
     privileges(request: ExplorerPrivilegeRequest): Promise<readonly ExplorerPrivilege[]>;
     search(request: ExplorerSearchRequest): Promise<readonly ExplorerSearchResult[]>;
+  };
+  readonly schema: {
+    load(request: SchemaLoadRequest): Promise<SchemaDraftView>;
+    preview(request: SchemaPreviewRequest): Promise<SchemaPreparedPreview>;
+    graph(request: SchemaGraphRequest): Promise<DependencyGraph>;
+    execute(request: SchemaExecuteRequest): Promise<SchemaExecutionResult>;
   };
   readonly queries: {
     execute(request: ExecuteQueryRequest): Promise<QueryExecutionView>;

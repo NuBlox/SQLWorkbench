@@ -10,7 +10,7 @@ The application UX and feature prioritisation should be informed by the database
 - [x] Provider registry
 - [x] Connection manager
 - [x] Query service
-- [x] MySQL provider backed by NuBloxSQL
+- [x] MySQL provider backed by published `@nublox/mysql`
 - [x] MySQL catalogue introspection baseline
 - [x] Database persona and jobs-to-be-done model
 - [x] Persistent connection-profile model
@@ -57,13 +57,16 @@ The application UX and feature prioritisation should be informed by the database
 
 ## M4 — Schema engineering
 
-- [ ] table/view editors
-- [ ] visual ER modelling
-- [ ] forward engineering
-- [ ] schema diff
-- [ ] migration generation
-- [ ] dependency analysis
-- [ ] DDL preview and guarded execution
+- [x] table structural editor
+- [ ] view definition editor
+- [x] ER dependency visualization
+- [ ] interactive visual ER modelling
+- [x] forward engineering
+- [x] schema diff
+- [x] migration generation
+- [x] dependency analysis
+- [x] DDL preview
+- [x] guarded live DDL execution with stale-preview fingerprint protection
 
 ## M5 — Query engineering
 

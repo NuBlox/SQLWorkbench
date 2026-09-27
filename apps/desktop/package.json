@@ -12,9 +12,11 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
+    "@nublox/workbench-catalog": "workspace:*",
     "@nublox/workbench-connection-profiles": "workspace:*",
     "@nublox/workbench-core": "workspace:*",
-    "@nublox/workbench-provider-mysql": "workspace:*"
+    "@nublox/workbench-provider-mysql": "workspace:*",
+    "@nublox/workbench-schema-engineering": "workspace:*"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "3.0.10",
