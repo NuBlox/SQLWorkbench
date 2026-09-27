@@ -16,6 +16,9 @@ import { MySqlDatabaseProvider } from "@nublox/workbench-provider-mysql";
 import type {
   DeleteProfileRequest,
   ExecuteQueryRequest,
+  ExplorerNamespaceRequest,
+  ExplorerRelationDetailsRequest,
+  ExplorerRelationRequest,
   ExportResultRequest,
   ExportResultResponse,
   SaveProfileRequest,
@@ -36,6 +39,9 @@ const IPC = Object.freeze({
   connectionsList: "nublox:connections:list",
   connectionsConnect: "nublox:connections:connect",
   connectionsDisconnect: "nublox:connections:disconnect",
+  explorerNamespaces: "nublox:explorer:namespaces",
+  explorerRelations: "nublox:explorer:relations",
+  explorerDescribe: "nublox:explorer:describe",
   queriesExecute: "nublox:queries:execute",
   queriesCancel: "nublox:queries:cancel",
   historyList: "nublox:history:list",
@@ -157,6 +163,18 @@ function registerIpc(desktop: DesktopServices): void {
   ipcMain.handle(
     IPC.connectionsDisconnect,
     (_event, profileId: string) => desktop.disconnectProfile(profileId),
+  );
+  ipcMain.handle(
+    IPC.explorerNamespaces,
+    (_event, request: ExplorerNamespaceRequest) => desktop.listExplorerNamespaces(request),
+  );
+  ipcMain.handle(
+    IPC.explorerRelations,
+    (_event, request: ExplorerRelationRequest) => desktop.listExplorerRelations(request),
+  );
+  ipcMain.handle(
+    IPC.explorerDescribe,
+    (_event, request: ExplorerRelationDetailsRequest) => desktop.describeExplorerRelation(request),
   );
   ipcMain.handle(
     IPC.queriesExecute,

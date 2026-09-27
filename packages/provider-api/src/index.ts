@@ -95,9 +95,12 @@ export interface ExplainPlan {
   readonly raw: unknown;
 }
 
+export type IntrospectionDepth = "namespaces" | "relations" | "full";
+
 export interface IntrospectionOptions {
   readonly catalogs?: readonly string[];
   readonly includeSystem?: boolean;
+  readonly depth?: IntrospectionDepth;
 }
 
 export interface DatabaseProvider {

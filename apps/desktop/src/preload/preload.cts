@@ -4,6 +4,9 @@ import type {
   DeleteProfileRequest,
   DesktopApi,
   ExecuteQueryRequest,
+  ExplorerNamespaceRequest,
+  ExplorerRelationDetailsRequest,
+  ExplorerRelationRequest,
   ExportResultRequest,
   SaveProfileRequest,
 } from "../lib/desktop-api.js";
@@ -16,6 +19,9 @@ const IPC = Object.freeze({
   connectionsList: "nublox:connections:list",
   connectionsConnect: "nublox:connections:connect",
   connectionsDisconnect: "nublox:connections:disconnect",
+  explorerNamespaces: "nublox:explorer:namespaces",
+  explorerRelations: "nublox:explorer:relations",
+  explorerDescribe: "nublox:explorer:describe",
   queriesExecute: "nublox:queries:execute",
   queriesCancel: "nublox:queries:cancel",
   historyList: "nublox:history:list",
@@ -37,6 +43,14 @@ const api: DesktopApi = Object.freeze({
     connect: (profileId: string) => ipcRenderer.invoke(IPC.connectionsConnect, profileId),
     disconnect: (profileId: string) =>
       ipcRenderer.invoke(IPC.connectionsDisconnect, profileId),
+  }),
+  explorer: Object.freeze({
+    namespaces: (request: ExplorerNamespaceRequest) =>
+      ipcRenderer.invoke(IPC.explorerNamespaces, request),
+    relations: (request: ExplorerRelationRequest) =>
+      ipcRenderer.invoke(IPC.explorerRelations, request),
+    describe: (request: ExplorerRelationDetailsRequest) =>
+      ipcRenderer.invoke(IPC.explorerDescribe, request),
   }),
   queries: Object.freeze({
     execute: (request: ExecuteQueryRequest) => ipcRenderer.invoke(IPC.queriesExecute, request),
