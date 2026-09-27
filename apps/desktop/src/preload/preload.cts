@@ -6,6 +6,7 @@ import type {
   ErExecuteRequest,
   ErRelationshipRequest,
   ExecuteQueryRequest,
+  ExplainQueryRequest,
   ExplorerNamespaceRequest,
   ExplorerPrivilegeRequest,
   ExplorerRelationDetailsRequest,
@@ -51,6 +52,7 @@ const IPC = Object.freeze({
   erPreview: "nublox:er:preview",
   erExecute: "nublox:er:execute",
   queriesExecute: "nublox:queries:execute",
+  queriesExplain: "nublox:queries:explain",
   queriesCancel: "nublox:queries:cancel",
   historyList: "nublox:history:list",
   historyClear: "nublox:history:clear",
@@ -102,6 +104,7 @@ const api: DesktopApi = Object.freeze({
   }),
   queries: Object.freeze({
     execute: (request: ExecuteQueryRequest) => ipcRenderer.invoke(IPC.queriesExecute, request),
+    explain: (request: ExplainQueryRequest) => ipcRenderer.invoke(IPC.queriesExplain, request),
     cancel: (executionId: string) => ipcRenderer.invoke(IPC.queriesCancel, executionId),
   }),
   history: Object.freeze({
