@@ -21,6 +21,11 @@ import type {
   ExplorerTrigger,
 } from "@nublox/workbench-core";
 import type {
+  DatabaseMigrationPreview,
+  DatabaseViewChangePlan,
+  DatabaseViewDefinition,
+} from "@nublox/workbench-provider-api";
+import type {
   DependencyGraph,
   SchemaDraftInput,
   SchemaDraftView,
@@ -44,6 +49,14 @@ export type {
   ExplorerSearchResult,
   ExplorerTrigger,
 } from "@nublox/workbench-core";
+export type {
+  DatabaseMigrationPreview,
+  DatabaseViewAlgorithm,
+  DatabaseViewChangePlan,
+  DatabaseViewCheckOption,
+  DatabaseViewDefinition,
+  DatabaseViewSecurityType,
+} from "@nublox/workbench-provider-api";
 export type {
   DependencyEdge,
   DependencyGraph,
@@ -145,6 +158,33 @@ export interface SchemaExecutionResult {
   readonly refreshedDraft?: SchemaDraftView;
 }
 
+export interface ViewLoadRequest extends ExplorerRelationDetailsRequest {}
+export interface ViewPreviewRequest extends ViewLoadRequest {
+  readonly draft: DatabaseViewChangePlan;
+}
+export interface ViewExecutionGuard {
+  readonly fingerprint: string;
+  readonly confirmationPhrase: string;
+}
+export interface ViewPreparedPreview {
+  readonly live: DatabaseViewDefinition;
+  readonly draft: DatabaseViewChangePlan;
+  readonly preview: DatabaseMigrationPreview;
+  readonly guard: ViewExecutionGuard;
+}
+export interface ViewExecuteRequest extends ViewPreviewRequest {
+  readonly fingerprint: string;
+  readonly confirmation: string;
+}
+export interface ViewExecutionResult {
+  readonly completed: boolean;
+  readonly executedStatements: number;
+  readonly totalStatements: number;
+  readonly failedStatementIndex?: number;
+  readonly error?: string;
+  readonly refreshedView?: DatabaseViewDefinition;
+}
+
 export interface DesktopApi {
   readonly profiles: {
     list(): Promise<readonly ConnectionProfile[]>;
@@ -174,6 +214,11 @@ export interface DesktopApi {
     preview(request: SchemaPreviewRequest): Promise<SchemaPreparedPreview>;
     graph(request: SchemaGraphRequest): Promise<DependencyGraph>;
     execute(request: SchemaExecuteRequest): Promise<SchemaExecutionResult>;
+  };
+  readonly views: {
+    load(request: ViewLoadRequest): Promise<DatabaseViewDefinition>;
+    preview(request: ViewPreviewRequest): Promise<ViewPreparedPreview>;
+    execute(request: ViewExecuteRequest): Promise<ViewExecutionResult>;
   };
   readonly queries: {
     execute(request: ExecuteQueryRequest): Promise<QueryExecutionView>;
