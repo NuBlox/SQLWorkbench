@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist/electron",
+    "types": ["node"]
+  },
+  "include": [
+    "src/lib/desktop-api.ts",
+    "src/main/**/*.ts",
+    "src/preload/**/*.cts"
+  ]
+}
