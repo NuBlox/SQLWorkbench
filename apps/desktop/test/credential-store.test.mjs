@@ -59,8 +59,8 @@ test("encrypted credential store fails closed when OS encryption is unavailable"
   });
 
   try {
-    await assert.rejects(
-      store.set("connection:test", { password: "secret" }),
+    assert.throws(
+      () => store.set("connection:test", { password: "secret" }),
       /encryption is unavailable/i,
     );
   } finally {
