@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./explain-plan": {
+      "types": "./dist/explain-plan.d.ts",
+      "import": "./dist/explain-plan.js"
     }
   },
   "scripts": {
