@@ -9,7 +9,8 @@ import type {
   ExplorerRelationRequest, ExplorerRoleGrant, ExplorerRoutine, ExplorerSearchRequest, ExplorerSearchResult, ExplorerTrigger,
 } from "@nublox/workbench-core";
 import type {
-  DatabaseMigrationPreview, DatabaseReferentialAction, DatabaseSchemaChangePlan, DatabaseViewChangePlan, DatabaseViewDefinition,
+  DatabaseMigrationPreview, DatabaseReferentialAction, DatabaseSchemaChangePlan, DatabaseServerSession,
+  DatabaseServerStatus, DatabaseServerVariable, DatabaseViewChangePlan, DatabaseViewDefinition,
 } from "@nublox/workbench-provider-api";
 import type { QueryCompletionCatalog } from "@nublox/workbench-query-engineering";
 import type { QueryPlanView } from "@nublox/workbench-query-engineering/explain-plan";
@@ -21,8 +22,9 @@ export type {
   ExplorerRoutine, ExplorerSearchRequest, ExplorerSearchResult, ExplorerTrigger,
 } from "@nublox/workbench-core";
 export type {
-  DatabaseMigrationPreview, DatabaseReferentialAction, DatabaseSchemaChangePlan, DatabaseViewAlgorithm, DatabaseViewChangePlan,
-  DatabaseViewCheckOption, DatabaseViewDefinition, DatabaseViewSecurityType,
+  DatabaseMigrationPreview, DatabaseReferentialAction, DatabaseSchemaChangePlan, DatabaseServerSession, DatabaseServerStatus,
+  DatabaseServerVariable, DatabaseViewAlgorithm, DatabaseViewChangePlan, DatabaseViewCheckOption, DatabaseViewDefinition,
+  DatabaseViewSecurityType,
 } from "@nublox/workbench-provider-api";
 export type { QueryCatalogColumn, QueryCatalogNamespace, QueryCatalogRelation, QueryCompletionCatalog } from "@nublox/workbench-query-engineering";
 export type { QueryPlanNode, QueryPlanProperty, QueryPlanView } from "@nublox/workbench-query-engineering/explain-plan";
@@ -34,6 +36,7 @@ export type {
 export interface SaveProfileRequest { readonly draft: ConnectionProfileDraft; readonly expectedRevision?: number; readonly credential?: ConnectionCredential; }
 export interface DeleteProfileRequest { readonly id: string; readonly expectedRevision: number; }
 export interface OpenConnectionInfo { readonly id: string; readonly profileId: string; readonly providerId: string; readonly connectedAt: string; readonly healthy: boolean; readonly latencyMs?: number; readonly message?: string; }
+export interface AdministrationValueRequest { readonly connectionId: string; readonly filter?: string; }
 
 export type QueryRunMode = "statement" | "selection" | "script";
 export type QueryCellValue = string | number | boolean | null;
@@ -83,6 +86,11 @@ export interface ErExecutionResult { readonly completed: boolean; readonly execu
 export interface DesktopApi {
   readonly profiles: { list(): Promise<readonly ConnectionProfile[]>; save(request: SaveProfileRequest): Promise<ConnectionProfile>; remove(request: DeleteProfileRequest): Promise<void>; clearCredential(profileId: string): Promise<ConnectionProfile>; };
   readonly connections: { list(): Promise<readonly OpenConnectionInfo[]>; connect(profileId: string): Promise<OpenConnectionInfo>; disconnect(profileId: string): Promise<void>; };
+  readonly administration: {
+    sessions(connectionId: string): Promise<readonly DatabaseServerSession[]>;
+    variables(request: AdministrationValueRequest): Promise<readonly DatabaseServerVariable[]>;
+    status(request: AdministrationValueRequest): Promise<readonly DatabaseServerStatus[]>;
+  };
   readonly explorer: {
     namespaces(request: ExplorerNamespaceRequest): Promise<readonly ExplorerNamespace[]>; relations(request: ExplorerRelationRequest): Promise<readonly ExplorerRelation[]>; describe(request: ExplorerRelationDetailsRequest): Promise<ExplorerRelationDetails>;
     routines(request: ExplorerRelationRequest): Promise<readonly ExplorerRoutine[]>; triggers(request: ExplorerRelationRequest): Promise<readonly ExplorerTrigger[]>; events(request: ExplorerRelationRequest): Promise<readonly ExplorerEvent[]>;
