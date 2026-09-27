@@ -13,6 +13,10 @@
     "./migration": {
       "types": "./dist/migration.d.ts",
       "import": "./dist/migration.js"
+    },
+    "./workbench": {
+      "types": "./dist/workbench.d.ts",
+      "import": "./dist/workbench.js"
     }
   },
   "scripts": {
