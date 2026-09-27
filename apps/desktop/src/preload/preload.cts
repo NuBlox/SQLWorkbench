@@ -33,7 +33,7 @@ const IPC = Object.freeze({
   viewLoad: "nublox:views:load", viewPreview: "nublox:views:preview", viewExecute: "nublox:views:execute", erPreview: "nublox:er:preview", erExecute: "nublox:er:execute",
   queriesExecute: "nublox:queries:execute", queriesExplain: "nublox:queries:explain", queriesCancel: "nublox:queries:cancel",
   historyList: "nublox:history:list", historyClear: "nublox:history:clear", planHistoryList: "nublox:plan-history:list", planHistoryClear: "nublox:plan-history:clear", queryStatistics: "nublox:statistics:query",
-  resultsExport: "nublox:results:export", appVersion: "nublox:app:version",
+  resultsExport: "nublox:results:export", appVersion: "nublox:app:version", rendererReady: "nublox:renderer:ready",
 });
 
 const api: DesktopApi = Object.freeze({
@@ -82,7 +82,10 @@ const api: DesktopApi = Object.freeze({
   planHistory: Object.freeze({ list: (request?: QueryPlanHistoryListRequest) => ipcRenderer.invoke(IPC.planHistoryList, request), clear: () => ipcRenderer.invoke(IPC.planHistoryClear) }),
   statistics: Object.freeze({ forQuery: (request: QueryStatisticsRequest) => ipcRenderer.invoke(IPC.queryStatistics, request) }),
   results: Object.freeze({ export: (request: ExportResultRequest) => ipcRenderer.invoke(IPC.resultsExport, request) }),
-  app: Object.freeze({ version: () => ipcRenderer.invoke(IPC.appVersion) }),
+  app: Object.freeze({
+    version: () => ipcRenderer.invoke(IPC.appVersion),
+    rendererReady: () => ipcRenderer.send(IPC.rendererReady),
+  }),
 });
 
 contextBridge.exposeInMainWorld("nublox", api);
