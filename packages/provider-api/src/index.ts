@@ -38,6 +38,7 @@ export interface DatabaseCapabilities {
   readonly objectSearch?: boolean;
   readonly privilegeIntrospection?: boolean;
   readonly migrationPreview?: boolean;
+  readonly viewDefinitionEditing?: boolean;
   readonly serverAdministration: boolean;
   readonly userAdministration: boolean;
 }
@@ -120,12 +121,42 @@ export interface DatabaseMigrationProvider {
   preview(plan: DatabaseSchemaChangePlan): DatabaseMigrationPreview;
 }
 
+export type DatabaseViewAlgorithm = "undefined" | "merge" | "temptable";
+export type DatabaseViewSecurityType = "definer" | "invoker";
+export type DatabaseViewCheckOption = "none" | "cascaded" | "local";
+
+export interface DatabaseViewDefinition extends DatabaseNamespaceReference {
+  readonly name: string;
+  readonly selectSql: string;
+  readonly algorithm: DatabaseViewAlgorithm;
+  readonly definer?: string;
+  readonly securityType: DatabaseViewSecurityType;
+  readonly checkOption: DatabaseViewCheckOption;
+  readonly updatable?: boolean;
+}
+
+export interface DatabaseViewChangePlan extends DatabaseNamespaceReference {
+  readonly name: string;
+  readonly selectSql: string;
+  readonly algorithm: DatabaseViewAlgorithm;
+  readonly definer?: string;
+  readonly securityType: DatabaseViewSecurityType;
+  readonly checkOption: DatabaseViewCheckOption;
+}
+
+export interface DatabaseViewProvider {
+  readonly providerId: string;
+  load(session: DatabaseSession, view: ExplorerObjectReference): Promise<DatabaseViewDefinition>;
+  preview(plan: DatabaseViewChangePlan): DatabaseMigrationPreview;
+}
+
 export interface DatabaseProvider {
   readonly id: string;
   readonly displayName: string;
   readonly capabilities: DatabaseCapabilities;
   readonly explorer?: DatabaseExplorerProvider;
   readonly migrations?: DatabaseMigrationProvider;
+  readonly viewEngineering?: DatabaseViewProvider;
   connect(config: DatabaseConnectionConfig): Promise<DatabaseSession>;
   introspect(session: DatabaseSession, options?: IntrospectionOptions): Promise<DatabaseCatalog>;
   execute(session: DatabaseSession, request: QueryRequest): Promise<QueryExecution>;
