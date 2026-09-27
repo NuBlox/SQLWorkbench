@@ -53,7 +53,7 @@ The application UX and feature prioritisation should be informed by the database
 - [x] preserve physical-name mappings
 - [x] compare physical schema with logical metadata
 - [x] generate database-neutral schema-change plans
-- [ ] feed migration plans into database providers
+- [x] feed migration plans into database providers
 
 ## M4 — Schema engineering
 
