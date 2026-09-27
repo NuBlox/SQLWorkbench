@@ -11,7 +11,9 @@ The product is intentionally separate from the packages it consumes:
 ## Architecture
 
 ```text
-Svelte / Electron desktop application
+Electron / Svelte Workbench UI
+              |
+        typed preload API
               |
               v
        Workbench Core
@@ -39,31 +41,34 @@ MySQL Provider      Future Providers
 
 The provider boundary is capability-driven. Workbench core code must not contain MySQL-specific branching.
 
-## Implemented foundation
+## Implemented product foundation
 
+- Electron desktop shell with context isolation, renderer sandboxing and a typed preload bridge;
+- Svelte 5 / SvelteKit desktop renderer;
 - normalized database catalogue package;
 - database-provider contract;
 - provider registry, connection manager and query service;
 - persistent, revisioned connection-profile repository;
-- credential-store abstraction that keeps passwords and TLS private keys outside profile persistence;
-- Electron desktop shell with a static SvelteKit/Svelte renderer;
-- operating-system encrypted credential persistence through Electron `safeStorage`;
-- secure preload/contextBridge IPC boundary;
-- connection-management workspace with create/edit/delete/connect/disconnect flows;
-- live session health display;
+- OS-backed credential encryption that keeps passwords and TLS private keys outside profile persistence;
 - first MySQL provider backed by `@nublox/mysql`;
-- MySQL connection health verification;
-- query execution and result normalization;
-- cancellation for text queries through NuBloxSQL `AbortSignal` support;
-- MySQL `EXPLAIN FORMAT=JSON` support;
-- lazy-ready INFORMATION_SCHEMA introspection for databases, tables/views, columns, indexes and foreign keys;
-- CI build and unit-test workflow.
+- connection health verification and live connection lifecycle;
+- Monaco SQL editor;
+- current-statement, selection and sequential script execution;
+- live query cancellation;
+- multiple result sets and tabular result rendering;
+- persistent bounded query history;
+- CSV and JSON result export;
+- MySQL `EXPLAIN FORMAT=JSON` support in the provider layer;
+- INFORMATION_SCHEMA introspection for databases, tables/views, columns, indexes and foreign keys;
+- CI build, Svelte diagnostics and unit tests.
 
 See [`docs/product/roadmap.md`](docs/product/roadmap.md) for the delivery sequence.
 
 See [`docs/product/database-personas.md`](docs/product/database-personas.md) for the database roles, jobs-to-be-done, capability mapping and persona-oriented workspace model that shapes the application UX.
 
-See [`docs/architecture/connection-profiles.md`](docs/architecture/connection-profiles.md) for the connection-profile security boundary and [`docs/architecture/desktop-application.md`](docs/architecture/desktop-application.md) for the Electron/Svelte process model.
+See [`docs/architecture/connection-profiles.md`](docs/architecture/connection-profiles.md) for the connection-profile and credential security boundary.
+
+See [`docs/architecture/query-execution.md`](docs/architecture/query-execution.md) for the editor, execution, cancellation, history and export boundary.
 
 ## Development
 
@@ -78,9 +83,10 @@ pnpm install
 pnpm check
 ```
 
-To open the built desktop application:
+Build and launch the desktop application:
 
 ```bash
+pnpm --filter @nublox/sql-workbench-desktop build
 pnpm --filter @nublox/sql-workbench-desktop start
 ```
 

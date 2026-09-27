@@ -1,9 +1,11 @@
+import { writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
   app,
   BrowserWindow,
+  dialog,
   ipcMain,
   safeStorage,
 } from "electron";
@@ -13,12 +15,17 @@ import { MySqlDatabaseProvider } from "@nublox/workbench-provider-mysql";
 
 import type {
   DeleteProfileRequest,
+  ExecuteQueryRequest,
+  ExportResultRequest,
+  ExportResultResponse,
   SaveProfileRequest,
 } from "../lib/desktop-api.js";
 import {
   EncryptedFileCredentialStore,
   type SecretCipher,
 } from "./encrypted-credential-store.js";
+import { QueryHistoryStore } from "./query-history-store.js";
+import { serializeResultSetCsv, serializeResultSetJson } from "./result-export.js";
 import { DesktopServices } from "./services.js";
 
 const IPC = Object.freeze({
@@ -29,6 +36,11 @@ const IPC = Object.freeze({
   connectionsList: "nublox:connections:list",
   connectionsConnect: "nublox:connections:connect",
   connectionsDisconnect: "nublox:connections:disconnect",
+  queriesExecute: "nublox:queries:execute",
+  queriesCancel: "nublox:queries:cancel",
+  historyList: "nublox:history:list",
+  historyClear: "nublox:history:clear",
+  resultsExport: "nublox:results:export",
   appVersion: "nublox:app:version",
 });
 
@@ -61,6 +73,7 @@ app.on("before-quit", (event) => {
   if (allowQuit || !services) return;
   event.preventDefault();
   allowQuit = true;
+  services.cancelAllQueries();
   void services.connections.disconnectAll()
     .catch((error: unknown) => {
       console.error("Failed to close one or more database sessions.", error);
@@ -77,10 +90,11 @@ function createServices(): DesktopServices {
     join(userData, "connection-credentials.json"),
     createSafeStorageCipher(),
   );
+  const history = new QueryHistoryStore(join(userData, "query-history.json"));
   const providers = new ProviderRegistry();
   providers.register(new MySqlDatabaseProvider());
   const connections = new ConnectionManager(providers);
-  return new DesktopServices(profiles, credentials, connections);
+  return new DesktopServices(profiles, credentials, connections, history);
 }
 
 function createSafeStorageCipher(): SecretCipher {
@@ -144,5 +158,49 @@ function registerIpc(desktop: DesktopServices): void {
     IPC.connectionsDisconnect,
     (_event, profileId: string) => desktop.disconnectProfile(profileId),
   );
+  ipcMain.handle(
+    IPC.queriesExecute,
+    (_event, request: ExecuteQueryRequest) => desktop.executeQuery(request),
+  );
+  ipcMain.handle(
+    IPC.queriesCancel,
+    (_event, executionId: string) => desktop.cancelQuery(executionId),
+  );
+  ipcMain.handle(
+    IPC.historyList,
+    (_event, limit?: number) => desktop.listHistory(limit),
+  );
+  ipcMain.handle(IPC.historyClear, () => desktop.clearHistory());
+  ipcMain.handle(
+    IPC.resultsExport,
+    (_event, request: ExportResultRequest) => exportResult(request),
+  );
   ipcMain.handle(IPC.appVersion, () => app.getVersion());
+}
+
+async function exportResult(request: ExportResultRequest): Promise<ExportResultResponse> {
+  const extension = request.format === "csv" ? "csv" : "json";
+  const safeName = sanitizeFileName(request.suggestedName || `query-result.${extension}`);
+  const defaultPath = safeName.toLowerCase().endsWith(`.${extension}`)
+    ? safeName
+    : `${safeName}.${extension}`;
+  const result = await dialog.showSaveDialog({
+    title: `Export query results as ${extension.toUpperCase()}`,
+    defaultPath,
+    filters: request.format === "csv"
+      ? [{ name: "CSV files", extensions: ["csv"] }]
+      : [{ name: "JSON files", extensions: ["json"] }],
+  });
+
+  if (result.canceled || !result.filePath) return { canceled: true };
+  const content = request.format === "csv"
+    ? serializeResultSetCsv(request.resultSet)
+    : serializeResultSetJson(request.resultSet);
+  await writeFile(result.filePath, content, { encoding: "utf8", mode: 0o600 });
+  return { canceled: false, path: result.filePath };
+}
+
+function sanitizeFileName(value: string): string {
+  const normalized = value.trim().replace(/[\\/:*?"<>|]/gu, "_");
+  return normalized || "query-result";
 }
