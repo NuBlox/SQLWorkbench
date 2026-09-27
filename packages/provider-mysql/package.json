@@ -14,6 +14,10 @@
       "types": "./dist/migration.d.ts",
       "import": "./dist/migration.js"
     },
+    "./view-engineering": {
+      "types": "./dist/view-engineering.d.ts",
+      "import": "./dist/view-engineering.js"
+    },
     "./workbench": {
       "types": "./dist/workbench.d.ts",
       "import": "./dist/workbench.js"
