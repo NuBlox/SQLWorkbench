@@ -33,7 +33,10 @@
       ? "M2 complete"
       : "M1 complete";
 
-  onMount(() => { void window.nublox.app.version().then((value) => { version = value; }); });
+  onMount(() => {
+    window.nublox.app.rendererReady();
+    void window.nublox.app.version().then((value) => { version = value; });
+  });
 </script>
 
 <svelte:head>
