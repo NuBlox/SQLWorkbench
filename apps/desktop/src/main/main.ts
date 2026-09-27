@@ -1,8 +1,8 @@
 import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { app, BrowserWindow, dialog, ipcMain, safeStorage } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, net, protocol, safeStorage } from "electron";
 import { JsonConnectionProfileRepository } from "@nublox/workbench-connection-profiles";
 import { ConnectionManager, ProviderRegistry } from "@nublox/workbench-core";
 import { MySqlWorkbenchProvider } from "@nublox/workbench-provider-mysql/workbench";
@@ -21,7 +21,7 @@ import { QueryPlanHistoryStore } from "./plan-history-store.js";
 import { QueryHistoryStore } from "./query-history-store.js";
 import { DesktopQueryLanguageService } from "./query-language-service.js";
 import { QueryStatisticsService } from "./query-statistics-service.js";
-import { rendererFailureHtml, verifyRendererBootstrap } from "./renderer-bootstrap.js";
+import { rendererFailureHtml, resolveRendererAssetPath, verifyRendererBootstrap } from "./renderer-bootstrap.js";
 import { serializeResultSetCsv, serializeResultSetJson } from "./result-export.js";
 import { DesktopSchemaService } from "./schema-service.js";
 import { DesktopServices } from "./services.js";
@@ -35,59 +35,212 @@ const IPC = Object.freeze({
   viewLoad: "nublox:views:load", viewPreview: "nublox:views:preview", viewExecute: "nublox:views:execute", erPreview: "nublox:er:preview", erExecute: "nublox:er:execute",
   queriesExecute: "nublox:queries:execute", queriesExplain: "nublox:queries:explain", queriesCancel: "nublox:queries:cancel",
   historyList: "nublox:history:list", historyClear: "nublox:history:clear", planHistoryList: "nublox:plan-history:list", planHistoryClear: "nublox:plan-history:clear", queryStatistics: "nublox:statistics:query",
-  resultsExport: "nublox:results:export", appVersion: "nublox:app:version",
+  resultsExport: "nublox:results:export", appVersion: "nublox:app:version", rendererReady: "nublox:renderer:ready",
 });
 
+const RENDERER_SCHEME = "nublox";
+const RENDERER_URL = `${RENDERER_SCHEME}://app/`;
+const RENDERER_READY_TIMEOUT_MS = 5_000;
 const currentDirectory = dirname(fileURLToPath(import.meta.url));
+const rendererRoot = resolve(currentDirectory, "../../../build/renderer");
 let services: DesktopServices | undefined;
 let allowQuit = false;
+
+protocol.registerSchemesAsPrivileged([{
+  scheme: RENDERER_SCHEME,
+  privileges: {
+    standard: true,
+    secure: true,
+    supportFetchAPI: true,
+    corsEnabled: true,
+    codeCache: true,
+  },
+}]);
+
 app.setName("NuBlox SQL Workbench");
 
 app.whenReady().then(async () => {
   await logStartup("Electron ready.");
-  services = createServices(); registerIpc(services); await createWindow();
+  await registerRendererProtocol();
+  services = createServices();
+  registerIpc(services);
+  await createWindow();
   app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) void createWindow(); });
 }).catch((error: unknown) => {
-  const detail = errorMessage(error); console.error("Failed to start NuBlox SQL Workbench.", error); void logStartup(`Fatal application startup failure: ${detail}`); dialog.showErrorBox("NuBlox SQL Workbench failed to start", detail); app.quit();
+  const detail = errorMessage(error);
+  console.error("Failed to start NuBlox SQL Workbench.", error);
+  void logStartup(`Fatal application startup failure: ${detail}`);
+  dialog.showErrorBox("NuBlox SQL Workbench failed to start", detail);
+  app.quit();
 });
+
 app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
 app.on("before-quit", (event) => {
   if (allowQuit || !services) return;
-  event.preventDefault(); allowQuit = true; services.cancelAllQueries();
-  void services.connections.disconnectAll().catch((error: unknown) => console.error("Failed to close one or more database sessions.", error)).finally(() => app.quit());
+  event.preventDefault();
+  allowQuit = true;
+  services.cancelAllQueries();
+  void services.connections.disconnectAll()
+    .catch((error: unknown) => console.error("Failed to close one or more database sessions.", error))
+    .finally(() => app.quit());
 });
+
+async function registerRendererProtocol(): Promise<void> {
+  protocol.handle(RENDERER_SCHEME, async (request) => {
+    const assetPath = resolveRendererAssetPath(rendererRoot, request.url);
+    if (!assetPath) {
+      return new Response("Not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
+    }
+    try {
+      return await net.fetch(pathToFileURL(assetPath).toString());
+    } catch (error) {
+      const detail = `Renderer asset request failed for '${request.url}': ${errorMessage(error)}`;
+      console.error(detail);
+      void logStartup(detail);
+      return new Response("Not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
+    }
+  });
+  await logStartup(`Renderer protocol registered at ${RENDERER_URL}.`);
+}
 
 function createServices(): DesktopServices {
   const userData = app.getPath("userData");
   const profiles = new JsonConnectionProfileRepository(join(userData, "connection-profiles.json"));
   const credentials = new EncryptedFileCredentialStore(join(userData, "connection-credentials.json"), createSafeStorageCipher());
   const history = new QueryHistoryStore(join(userData, "query-history.json"));
-  const providers = new ProviderRegistry(); providers.register(new MySqlWorkbenchProvider());
+  const providers = new ProviderRegistry();
+  providers.register(new MySqlWorkbenchProvider());
   return new DesktopServices(profiles, credentials, new ConnectionManager(providers), history);
 }
+
 function createSafeStorageCipher(): SecretCipher {
-  return { isAvailable: () => { if (!safeStorage.isEncryptionAvailable()) return false; if (process.platform !== "linux") return true; const backend = safeStorage.getSelectedStorageBackend(); return backend !== "basic_text" && backend !== "unknown"; }, encrypt: (value) => safeStorage.encryptString(value), decrypt: (value) => safeStorage.decryptString(value) };
+  return {
+    isAvailable: () => {
+      if (!safeStorage.isEncryptionAvailable()) return false;
+      if (process.platform !== "linux") return true;
+      const backend = safeStorage.getSelectedStorageBackend();
+      return backend !== "basic_text" && backend !== "unknown";
+    },
+    encrypt: (value) => safeStorage.encryptString(value),
+    decrypt: (value) => safeStorage.decryptString(value),
+  };
 }
 
 async function createWindow(): Promise<void> {
-  const preloadScript = resolve(currentDirectory, "../preload/preload.cjs"); const rendererHtml = resolve(currentDirectory, "../../../build/renderer/index.html");
-  const window = new BrowserWindow({ width: 1480, height: 920, minWidth: 1080, minHeight: 700, title: "NuBlox SQL Workbench", backgroundColor: "#0f172a", show: true, webPreferences: { preload: preloadScript, contextIsolation: true, nodeIntegration: false, sandbox: true } });
+  const preloadScript = resolve(currentDirectory, "../preload/preload.cjs");
+  const rendererHtml = join(rendererRoot, "index.html");
+  const diagnostics: string[] = [];
+  let rendererReady = false;
+  let readinessTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const window = new BrowserWindow({
+    width: 1480,
+    height: 920,
+    minWidth: 1080,
+    minHeight: 700,
+    title: "NuBlox SQL Workbench",
+    backgroundColor: "#0f172a",
+    show: true,
+    webPreferences: {
+      preload: preloadScript,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+
+  const recordDiagnostic = (detail: string): void => {
+    diagnostics.push(detail);
+    if (diagnostics.length > 12) diagnostics.shift();
+    console.error(detail);
+    void logStartup(detail);
+  };
+
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
-  window.webContents.on("render-process-gone", (_event, details) => { const detail = `Renderer process exited: ${details.reason}${details.exitCode !== 0 ? ` (code ${details.exitCode})` : ""}.`; console.error(detail); void logStartup(detail); void showRendererFailure(window, "The SQL Workbench renderer stopped unexpectedly", [detail]); });
-  window.webContents.on("did-fail-load", (_event, code, description, validatedUrl, isMainFrame) => { if (!isMainFrame) return; const detail = `Renderer navigation failed (${code}): ${description}${validatedUrl ? ` · ${validatedUrl}` : ""}`; console.error(detail); void logStartup(detail); });
+  window.webContents.on("console-message", (details) => {
+    if (details.level !== "warning" && details.level !== "error") return;
+    const source = details.sourceId ? ` · ${details.sourceId}:${details.lineNumber}` : "";
+    recordDiagnostic(`Renderer console ${details.level}: ${details.message}${source}`);
+  });
+  window.webContents.on("preload-error", (_event, preloadPath, error) => {
+    recordDiagnostic(`Preload failed at '${preloadPath}': ${errorMessage(error)}`);
+  });
+  window.webContents.on("ipc-message", (_event, channel) => {
+    if (channel !== IPC.rendererReady) return;
+    rendererReady = true;
+    if (readinessTimer) clearTimeout(readinessTimer);
+    void logStartup("Renderer application mounted successfully.");
+  });
+  window.webContents.on("render-process-gone", (_event, details) => {
+    const detail = `Renderer process exited: ${details.reason}${details.exitCode !== 0 ? ` (code ${details.exitCode})` : ""}.`;
+    recordDiagnostic(detail);
+    void showRendererFailure(window, "The SQL Workbench renderer stopped unexpectedly", [detail]);
+  });
+  window.webContents.on("did-fail-load", (_event, code, description, validatedUrl, isMainFrame) => {
+    if (!isMainFrame) return;
+    recordDiagnostic(`Renderer navigation failed (${code}): ${description}${validatedUrl ? ` · ${validatedUrl}` : ""}`);
+  });
+  window.on("closed", () => { if (readinessTimer) clearTimeout(readinessTimer); });
+
   const check = await verifyRendererBootstrap({ rendererHtml, preloadScript });
-  if (!check.ok) { for (const error of check.errors) { console.error(error); await logStartup(error); } await showRendererFailure(window, "SQL Workbench could not load its desktop UI", check.errors); return; }
-  try { await logStartup(`Loading renderer '${rendererHtml}'.`); await window.loadFile(rendererHtml); window.webContents.on("will-navigate", (event) => event.preventDefault()); await logStartup("Renderer loaded successfully."); }
-  catch (error) { const detail = `Unable to load renderer '${rendererHtml}': ${errorMessage(error)}`; console.error(detail); await logStartup(detail); await showRendererFailure(window, "SQL Workbench could not load its desktop UI", [detail]); }
+  if (!check.ok) {
+    for (const error of check.errors) recordDiagnostic(error);
+    await showRendererFailure(window, "SQL Workbench could not load its desktop UI", check.errors);
+    return;
+  }
+
+  try {
+    await logStartup(`Loading renderer '${RENDERER_URL}' from '${rendererRoot}'.`);
+    await window.loadURL(RENDERER_URL);
+    window.webContents.on("will-navigate", (event) => event.preventDefault());
+    await logStartup("Renderer document loaded; waiting for Svelte application mount.");
+
+    if (!rendererReady) {
+      readinessTimer = setTimeout(() => {
+        if (rendererReady || window.isDestroyed()) return;
+        const details = [
+          `Renderer document loaded, but the Svelte application did not report a successful mount within ${RENDERER_READY_TIMEOUT_MS / 1000} seconds.`,
+          ...diagnostics.slice(-8),
+        ];
+        void logStartup(details[0]!);
+        void showRendererFailure(window, "SQL Workbench renderer failed to mount", details);
+      }, RENDERER_READY_TIMEOUT_MS);
+    }
+  } catch (error) {
+    const detail = `Unable to load renderer '${RENDERER_URL}': ${errorMessage(error)}`;
+    recordDiagnostic(detail);
+    await showRendererFailure(window, "SQL Workbench could not load its desktop UI", [detail]);
+  }
 }
-async function showRendererFailure(window: BrowserWindow, title: string, details: readonly string[]): Promise<void> { if (window.isDestroyed()) return; await window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(rendererFailureHtml(title, details))}`).catch((error: unknown) => console.error("Unable to show renderer failure page.", error)); if (!window.isVisible()) window.show(); }
-async function logStartup(message: string): Promise<void> { try { const directory = app.getPath("userData"); await mkdir(directory, { recursive: true }); await appendFile(join(directory, "startup.log"), `${new Date().toISOString()} ${message}\n`, "utf8"); } catch {} }
+
+async function showRendererFailure(window: BrowserWindow, title: string, details: readonly string[]): Promise<void> {
+  if (window.isDestroyed()) return;
+  await window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(rendererFailureHtml(title, details))}`)
+    .catch((error: unknown) => console.error("Unable to show renderer failure page.", error));
+  if (!window.isVisible()) window.show();
+}
+
+async function logStartup(message: string): Promise<void> {
+  try {
+    const directory = app.getPath("userData");
+    await mkdir(directory, { recursive: true });
+    await appendFile(join(directory, "startup.log"), `${new Date().toISOString()} ${message}\n`, "utf8");
+  } catch {
+    // Startup logging must never prevent the application from launching.
+  }
+}
+
 function errorMessage(error: unknown): string { return error instanceof Error ? error.message : String(error); }
 
 function registerIpc(desktop: DesktopServices): void {
   const planHistory = new QueryPlanHistoryStore(join(app.getPath("userData"), "query-plan-history.json"));
   const statistics = new QueryStatisticsService(desktop.history, planHistory);
-  const queryLanguage = new DesktopQueryLanguageService(desktop.connections); const explain = new DesktopExplainService(desktop.connections, planHistory, statistics); const schema = new DesktopSchemaService(desktop.connections); const views = new DesktopViewService(desktop.connections); const er = new DesktopErService(desktop.connections);
+  const queryLanguage = new DesktopQueryLanguageService(desktop.connections);
+  const explain = new DesktopExplainService(desktop.connections, planHistory, statistics);
+  const schema = new DesktopSchemaService(desktop.connections);
+  const views = new DesktopViewService(desktop.connections);
+  const er = new DesktopErService(desktop.connections);
+
   ipcMain.handle(IPC.profilesList, () => desktop.listProfiles()); ipcMain.handle(IPC.profilesSave, (_event, request: SaveProfileRequest) => desktop.saveProfile(request)); ipcMain.handle(IPC.profilesRemove, (_event, request: DeleteProfileRequest) => desktop.removeProfile(request)); ipcMain.handle(IPC.profilesClearCredential, (_event, profileId: string) => desktop.clearCredential(profileId));
   ipcMain.handle(IPC.connectionsList, () => desktop.listConnections()); ipcMain.handle(IPC.connectionsConnect, (_event, profileId: string) => desktop.connectProfile(profileId)); ipcMain.handle(IPC.connectionsDisconnect, (_event, profileId: string) => desktop.disconnectProfile(profileId));
   ipcMain.handle(IPC.explorerNamespaces, (_event, request: ExplorerNamespaceRequest) => desktop.listExplorerNamespaces(request)); ipcMain.handle(IPC.explorerRelations, (_event, request: ExplorerRelationRequest) => desktop.listExplorerRelations(request)); ipcMain.handle(IPC.explorerDescribe, (_event, request: ExplorerRelationDetailsRequest) => desktop.describeExplorerRelation(request)); ipcMain.handle(IPC.explorerRoutines, (_event, request: ExplorerRelationRequest) => desktop.listExplorerRoutines(request)); ipcMain.handle(IPC.explorerTriggers, (_event, request: ExplorerRelationRequest) => desktop.listExplorerTriggers(request)); ipcMain.handle(IPC.explorerEvents, (_event, request: ExplorerRelationRequest) => desktop.listExplorerEvents(request)); ipcMain.handle(IPC.explorerPrincipals, (_event, connectionId: string) => desktop.listExplorerPrincipals(connectionId)); ipcMain.handle(IPC.explorerRoles, (_event, connectionId: string) => desktop.listExplorerRoleGrants(connectionId)); ipcMain.handle(IPC.explorerPrivileges, (_event, request: ExplorerPrivilegeRequest) => desktop.listExplorerPrivileges(request)); ipcMain.handle(IPC.explorerSearch, (_event, request: ExplorerSearchRequest) => desktop.searchExplorer(request));
@@ -101,9 +254,16 @@ function registerIpc(desktop: DesktopServices): void {
 }
 
 async function exportResult(request: ExportResultRequest): Promise<ExportResultResponse> {
-  const extension = request.format === "csv" ? "csv" : "json"; const safeName = sanitizeFileName(request.suggestedName || `query-result.${extension}`); const defaultPath = safeName.toLowerCase().endsWith(`.${extension}`) ? safeName : `${safeName}.${extension}`;
+  const extension = request.format === "csv" ? "csv" : "json";
+  const safeName = sanitizeFileName(request.suggestedName || `query-result.${extension}`);
+  const defaultPath = safeName.toLowerCase().endsWith(`.${extension}`) ? safeName : `${safeName}.${extension}`;
   const result = await dialog.showSaveDialog({ title: `Export query results as ${extension.toUpperCase()}`, defaultPath, filters: request.format === "csv" ? [{ name: "CSV files", extensions: ["csv"] }] : [{ name: "JSON files", extensions: ["json"] }] });
   if (result.canceled || !result.filePath) return { canceled: true };
-  await writeFile(result.filePath, request.format === "csv" ? serializeResultSetCsv(request.resultSet) : serializeResultSetJson(request.resultSet), { encoding: "utf8", mode: 0o600 }); return { canceled: false, path: result.filePath };
+  await writeFile(result.filePath, request.format === "csv" ? serializeResultSetCsv(request.resultSet) : serializeResultSetJson(request.resultSet), { encoding: "utf8", mode: 0o600 });
+  return { canceled: false, path: result.filePath };
 }
-function sanitizeFileName(value: string): string { const normalized = value.trim().replace(/[\\/:*?"<>|]/gu, "_"); return normalized || "query-result"; }
+
+function sanitizeFileName(value: string): string {
+  const normalized = value.trim().replace(/[\\/:*?"<>|]/gu, "_");
+  return normalized || "query-result";
+}
