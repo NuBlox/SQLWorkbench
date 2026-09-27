@@ -1,0 +1,30 @@
+{
+  "name": "@nublox/sql-workbench-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/electron/main/main.js",
+  "scripts": {
+    "build": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && vite build && tsc -p tsconfig.electron.json",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && tsc -p tsconfig.electron.json --noEmit",
+    "dev": "vite dev --host 127.0.0.1 --port 5173",
+    "start": "electron .",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@nublox/workbench-connection-profiles": "workspace:*",
+    "@nublox/workbench-core": "workspace:*",
+    "@nublox/workbench-provider-mysql": "workspace:*"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-static": "3.0.10",
+    "@sveltejs/kit": "2.70.3",
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "@types/node": "^22.18.6",
+    "electron": "44.4.5",
+    "svelte": "5.57.1",
+    "svelte-check": "4.7.6",
+    "typescript": "^5.8.3",
+    "vite": "8.3.1"
+  }
+}

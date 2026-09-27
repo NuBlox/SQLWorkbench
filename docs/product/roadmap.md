@@ -15,23 +15,23 @@ The application UX and feature prioritisation should be informed by the database
 - [x] Database persona and jobs-to-be-done model
 - [x] Persistent connection-profile model
 - [x] Secure credential-store abstraction
-- [ ] Production OS-backed credential-store implementation
+- [x] Production OS-backed credential-store implementation
 
 ## M1 — Desktop SQL development
 
-- Electron desktop shell
-- Svelte renderer
-- application-data path integration for connection profiles
-- OS keychain/credential-store adapter
-- persona-aware workspace/navigation model
-- Monaco SQL editor
-- connection selector
-- execute statement / selection / script
-- query cancellation
-- result grid and multiple results
-- messages and execution timing
-- query history
-- CSV/JSON export
+- [x] Electron desktop shell
+- [x] Svelte renderer
+- [x] application-data path integration for connection profiles
+- [x] OS keychain/credential-store adapter
+- [x] persona-aware workspace/navigation model
+- [x] connection selector and live connection lifecycle
+- [ ] Monaco SQL editor
+- [ ] execute statement / selection / script
+- [ ] query cancellation
+- [ ] result grid and multiple results
+- [ ] messages and execution timing
+- [ ] query history
+- [ ] CSV/JSON export
 
 ## M2 — Database explorer
 
