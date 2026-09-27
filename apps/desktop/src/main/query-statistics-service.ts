@@ -18,6 +18,7 @@ export class QueryStatisticsService {
     const matchingExecutions = executions.filter((entry) => entry.connectionId === connectionId && fingerprintSql(entry.sql) === fingerprint);
     const matchingPlans = plans.filter((entry) => entry.connectionId === connectionId && entry.sqlFingerprint === fingerprint);
     const elapsed = matchingExecutions.map((entry) => entry.elapsedMs);
+    const latestExecution = matchingExecutions[0];
     const successCount = matchingExecutions.filter((entry) => entry.status === "success").length;
     const errorCount = matchingExecutions.filter((entry) => entry.status === "error").length;
     const cancelledCount = matchingExecutions.filter((entry) => entry.status === "cancelled").length;
@@ -33,11 +34,11 @@ export class QueryStatisticsService {
       successCount,
       errorCount,
       cancelledCount,
-      ...(elapsed.length > 0 ? {
+      ...(latestExecution ? {
         averageElapsedMs: elapsed.reduce((sum, value) => sum + value, 0) / elapsed.length,
         minimumElapsedMs: Math.min(...elapsed),
         maximumElapsedMs: Math.max(...elapsed),
-        lastExecutedAt: matchingExecutions[0]?.startedAt,
+        lastExecutedAt: latestExecution.startedAt,
       } : {}),
       explainCount: matchingPlans.length,
       ...(latest ? {
