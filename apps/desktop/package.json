@@ -15,6 +15,7 @@
     "@nublox/workbench-catalog": "workspace:*",
     "@nublox/workbench-connection-profiles": "workspace:*",
     "@nublox/workbench-core": "workspace:*",
+    "@nublox/workbench-provider-api": "workspace:*",
     "@nublox/workbench-provider-mysql": "workspace:*",
     "@nublox/workbench-schema-engineering": "workspace:*"
   },
