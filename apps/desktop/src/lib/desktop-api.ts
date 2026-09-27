@@ -22,6 +22,8 @@ import type {
 } from "@nublox/workbench-core";
 import type {
   DatabaseMigrationPreview,
+  DatabaseReferentialAction,
+  DatabaseSchemaChangePlan,
   DatabaseViewChangePlan,
   DatabaseViewDefinition,
 } from "@nublox/workbench-provider-api";
@@ -51,6 +53,8 @@ export type {
 } from "@nublox/workbench-core";
 export type {
   DatabaseMigrationPreview,
+  DatabaseReferentialAction,
+  DatabaseSchemaChangePlan,
   DatabaseViewAlgorithm,
   DatabaseViewChangePlan,
   DatabaseViewCheckOption,
@@ -185,6 +189,43 @@ export interface ViewExecutionResult {
   readonly refreshedView?: DatabaseViewDefinition;
 }
 
+interface ErRelationshipBase extends ExplorerRelationRequest {
+  readonly sourceTable: string;
+  readonly foreignKey: string;
+}
+export interface ErAddRelationshipRequest extends ErRelationshipBase {
+  readonly operation: "add";
+  readonly sourceColumns: readonly string[];
+  readonly targetTable: string;
+  readonly targetColumns: readonly string[];
+  readonly onDelete?: DatabaseReferentialAction;
+}
+export interface ErDropRelationshipRequest extends ErRelationshipBase {
+  readonly operation: "drop";
+}
+export type ErRelationshipRequest = ErAddRelationshipRequest | ErDropRelationshipRequest;
+export interface ErExecutionGuard {
+  readonly fingerprint: string;
+  readonly destructive: boolean;
+  readonly confirmationPhrase: string;
+}
+export interface ErPreparedPreview {
+  readonly plan: DatabaseSchemaChangePlan;
+  readonly preview: DatabaseMigrationPreview;
+  readonly guard: ErExecutionGuard;
+}
+export type ErExecuteRequest = ErRelationshipRequest & {
+  readonly fingerprint: string;
+  readonly confirmation: string;
+};
+export interface ErExecutionResult {
+  readonly completed: boolean;
+  readonly executedStatements: number;
+  readonly totalStatements: number;
+  readonly failedStatementIndex?: number;
+  readonly error?: string;
+}
+
 export interface DesktopApi {
   readonly profiles: {
     list(): Promise<readonly ConnectionProfile[]>;
@@ -219,6 +260,10 @@ export interface DesktopApi {
     load(request: ViewLoadRequest): Promise<DatabaseViewDefinition>;
     preview(request: ViewPreviewRequest): Promise<ViewPreparedPreview>;
     execute(request: ViewExecuteRequest): Promise<ViewExecutionResult>;
+  };
+  readonly er: {
+    preview(request: ErRelationshipRequest): Promise<ErPreparedPreview>;
+    execute(request: ErExecuteRequest): Promise<ErExecutionResult>;
   };
   readonly queries: {
     execute(request: ExecuteQueryRequest): Promise<QueryExecutionView>;
