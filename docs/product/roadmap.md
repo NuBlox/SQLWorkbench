@@ -48,11 +48,11 @@ The application UX and feature prioritisation should be informed by the database
 
 ## M3 — Metaobject bridge
 
-- [ ] reverse-engineer physical tables to metaobject draft definitions
-- [ ] map foreign keys to relationships
-- [ ] preserve physical-name mappings
-- [ ] compare physical schema with logical metadata
-- [ ] generate database-neutral schema-change plans
+- [x] reverse-engineer physical tables to metaobject draft definitions
+- [x] map foreign keys to relationships
+- [x] preserve physical-name mappings
+- [x] compare physical schema with logical metadata
+- [x] generate database-neutral schema-change plans
 - [ ] feed migration plans into database providers
 
 ## M4 — Schema engineering
