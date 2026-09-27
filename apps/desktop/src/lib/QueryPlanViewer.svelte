@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { QueryPlanAnalysisView, QueryPlanNode } from "$lib/desktop-api";
+  import type { QueryPlanAnalysisView, QueryPlanNode, QueryPlanView } from "$lib/desktop-api";
 
-  export let plan: QueryPlanAnalysisView;
+  export let plan: QueryPlanView | QueryPlanAnalysisView;
 
   interface PlanRow {
     readonly node: QueryPlanNode;
@@ -12,6 +12,11 @@
   $: rows = flatten(plan.root);
   $: if (!selectedId || !rows.some((row) => row.node.id === selectedId)) selectedId = plan.root.id;
   $: selected = rows.find((row) => row.node.id === selectedId)?.node ?? plan.root;
+  $: analysis = isAnalysis(plan) ? plan : undefined;
+
+  function isAnalysis(value: QueryPlanView | QueryPlanAnalysisView): value is QueryPlanAnalysisView {
+    return "statistics" in value && "capturedAt" in value && "explainElapsedMs" in value;
+  }
 
   function flatten(root: QueryPlanNode): PlanRow[] {
     const result: PlanRow[] = [];
@@ -32,17 +37,19 @@
 <section class="plan-viewer" aria-label="Query execution plan">
   <header class="summary">
     <div>
-      <span class="eyebrow">Optimizer plan · captured {new Date(plan.capturedAt).toLocaleString()}</span>
+      <span class="eyebrow">Optimizer plan{#if analysis} · captured {new Date(analysis.capturedAt).toLocaleString()}{/if}</span>
       <strong>{plan.providerId.toUpperCase()} · {plan.format}</strong>
     </div>
     <div class="summary-metrics">
       <span><b>{plan.nodeCount}</b> nodes</span>
       {#if plan.queryCost !== undefined}<span><b>{number(plan.queryCost)}</b> query cost</span>{/if}
-      <span><b>{milliseconds(plan.explainElapsedMs)}</b> explain</span>
-      <span><b>{plan.statistics.executionCount}</b> executions</span>
-      {#if plan.statistics.averageElapsedMs !== undefined}<span><b>{milliseconds(plan.statistics.averageElapsedMs)}</b> avg runtime</span>{/if}
-      <span><b>{plan.statistics.explainCount}</b> plan snapshots</span>
-      {#if plan.statistics.planCostDelta !== undefined}<span class:regression={plan.statistics.planCostDelta > 0} class:improvement={plan.statistics.planCostDelta < 0}><b>{signed(plan.statistics.planCostDelta)}</b> cost Δ</span>{/if}
+      {#if analysis}
+        <span><b>{milliseconds(analysis.explainElapsedMs)}</b> explain</span>
+        <span><b>{analysis.statistics.executionCount}</b> executions</span>
+        {#if analysis.statistics.averageElapsedMs !== undefined}<span><b>{milliseconds(analysis.statistics.averageElapsedMs)}</b> avg runtime</span>{/if}
+        <span><b>{analysis.statistics.explainCount}</b> plan snapshots</span>
+        {#if analysis.statistics.planCostDelta !== undefined}<span class:regression={analysis.statistics.planCostDelta > 0} class:improvement={analysis.statistics.planCostDelta < 0}><b>{signed(analysis.statistics.planCostDelta)}</b> cost Δ</span>{/if}
+      {/if}
     </div>
   </header>
 
@@ -61,19 +68,21 @@
     <aside class="details" aria-label="Selected plan operator details">
       <div class="detail-heading"><span class="kind">{kindLabel(selected.kind)}</span><h3>{selected.label}</h3>{#if selected.subtitle}<p>{selected.subtitle}</p>{/if}</div>
 
-      <div class="statistics-card">
-        <h4>Query statistics</h4>
-        <dl>
-          <div><dt>Executions</dt><dd>{plan.statistics.executionCount}</dd></div>
-          <div><dt>Successful</dt><dd>{plan.statistics.successCount}</dd></div>
-          {#if plan.statistics.errorCount > 0}<div><dt>Errors</dt><dd>{plan.statistics.errorCount}</dd></div>{/if}
-          {#if plan.statistics.cancelledCount > 0}<div><dt>Cancelled</dt><dd>{plan.statistics.cancelledCount}</dd></div>{/if}
-          {#if plan.statistics.minimumElapsedMs !== undefined}<div><dt>Runtime range</dt><dd>{milliseconds(plan.statistics.minimumElapsedMs)} – {milliseconds(plan.statistics.maximumElapsedMs ?? plan.statistics.minimumElapsedMs)}</dd></div>{/if}
-          <div><dt>Plan snapshots</dt><dd>{plan.statistics.explainCount}</dd></div>
-          {#if plan.statistics.previousPlanCost !== undefined}<div><dt>Previous cost</dt><dd>{number(plan.statistics.previousPlanCost)}</dd></div>{/if}
-          {#if plan.statistics.planCostDelta !== undefined}<div><dt>Cost change</dt><dd class:regression-text={plan.statistics.planCostDelta > 0} class:improvement-text={plan.statistics.planCostDelta < 0}>{signed(plan.statistics.planCostDelta)}</dd></div>{/if}
-        </dl>
-      </div>
+      {#if analysis}
+        <div class="statistics-card">
+          <h4>Query statistics</h4>
+          <dl>
+            <div><dt>Executions</dt><dd>{analysis.statistics.executionCount}</dd></div>
+            <div><dt>Successful</dt><dd>{analysis.statistics.successCount}</dd></div>
+            {#if analysis.statistics.errorCount > 0}<div><dt>Errors</dt><dd>{analysis.statistics.errorCount}</dd></div>{/if}
+            {#if analysis.statistics.cancelledCount > 0}<div><dt>Cancelled</dt><dd>{analysis.statistics.cancelledCount}</dd></div>{/if}
+            {#if analysis.statistics.minimumElapsedMs !== undefined}<div><dt>Runtime range</dt><dd>{milliseconds(analysis.statistics.minimumElapsedMs)} – {milliseconds(analysis.statistics.maximumElapsedMs ?? analysis.statistics.minimumElapsedMs)}</dd></div>{/if}
+            <div><dt>Plan snapshots</dt><dd>{analysis.statistics.explainCount}</dd></div>
+            {#if analysis.statistics.previousPlanCost !== undefined}<div><dt>Previous cost</dt><dd>{number(analysis.statistics.previousPlanCost)}</dd></div>{/if}
+            {#if analysis.statistics.planCostDelta !== undefined}<div><dt>Cost change</dt><dd class:regression-text={analysis.statistics.planCostDelta > 0} class:improvement-text={analysis.statistics.planCostDelta < 0}>{signed(analysis.statistics.planCostDelta)}</dd></div>{/if}
+          </dl>
+        </div>
+      {/if}
 
       <dl class="primary-details">
         {#if selected.accessType}<div><dt>Access</dt><dd>{selected.accessType}</dd></div>{/if}
