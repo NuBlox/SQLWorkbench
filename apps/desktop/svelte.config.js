@@ -6,7 +6,6 @@ const config = {
     adapter: adapter({
       pages: "build/renderer",
       assets: "build/renderer",
-      fallback: "index.html",
     }),
     paths: {
       relative: true,

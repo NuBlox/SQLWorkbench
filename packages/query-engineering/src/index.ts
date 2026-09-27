@@ -3,8 +3,10 @@ import {
   SqlSession,
   statementSpans,
   type Completion,
+  type Diagnostic as SqllensSemanticDiagnostic,
   type SchemaMapping,
 } from "sqllens";
+import { format as formatSql } from "sql-formatter";
 
 export type SqlDialectId = "mysql";
 
@@ -23,7 +25,7 @@ export interface SqlTextRange {
 export interface SqlDiagnostic extends SqlTextRange {
   readonly severity: "error" | "warning" | "info";
   readonly message: string;
-  readonly source: "parser" | "catalog";
+  readonly source: "parser" | "catalog" | "semantic";
 }
 
 export interface SqlStatement extends SqlTextRange {
@@ -94,8 +96,9 @@ export interface SqlParseResult {
 
 export interface QueryLanguageService {
   readonly dialect: SqlDialectId;
-  parse(sql: string, position?: SqlPosition): SqlParseResult;
+  parse(sql: string, position?: SqlPosition, catalog?: QueryCompletionCatalog): SqlParseResult;
   complete(sql: string, position: SqlPosition, catalog?: QueryCompletionCatalog): readonly SqlCompletionItem[];
+  format(sql: string): string;
 }
 
 export const supportedQueryDialects: readonly SqlDialectId[] = Object.freeze(["mysql"]);
@@ -109,9 +112,10 @@ export function createQueryLanguageService(providerId: string): QueryLanguageSer
 export class MySqlQueryLanguageService implements QueryLanguageService {
   readonly dialect: SqlDialectId = "mysql";
 
-  parse(sql: string, position?: SqlPosition): SqlParseResult {
-    const session = SqlSession.create(sql, this.dialect);
-    const diagnostics: SqlDiagnostic[] = session.syntaxDiagnostics.map((diagnostic) => {
+  parse(sql: string, position?: SqlPosition, catalog?: QueryCompletionCatalog): SqlParseResult {
+    const schema = schemaForCatalog(catalog);
+    const session = SqlSession.create(sql, this.dialect, schema ? { schema } : {});
+    const syntaxDiagnostics: SqlDiagnostic[] = session.syntaxDiagnostics.map((diagnostic) => {
       const startColumn = diagnostic.column + 1;
       return {
         severity: "error",
@@ -123,6 +127,10 @@ export class MySqlQueryLanguageService implements QueryLanguageService {
         endColumn: startColumn + Math.max(diagnostic.length, 1),
       };
     });
+
+    const semanticDiagnostics = schema && syntaxDiagnostics.length === 0
+      ? session.qualify().diagnostics.map(normalizeSemanticDiagnostic)
+      : [];
 
     const statements: SqlStatement[] = statementSpans(sql, this.dialect)
       .map((span) => {
@@ -140,16 +148,14 @@ export class MySqlQueryLanguageService implements QueryLanguageService {
 
     return {
       dialect: this.dialect,
-      diagnostics,
+      diagnostics: [...syntaxDiagnostics, ...semanticDiagnostics],
       statements,
       entities: sourceEntities(session, position ? positionToOffset(sql, position) : undefined),
     };
   }
 
   complete(sql: string, position: SqlPosition, catalog?: QueryCompletionCatalog): readonly SqlCompletionItem[] {
-    const schema = catalog && catalog.providerId.trim().toLowerCase() === "mysql"
-      ? new Schema(toMySqlSchema(catalog))
-      : undefined;
+    const schema = schemaForCatalog(catalog);
     const session = SqlSession.create(sql, this.dialect, schema ? { schema } : {});
     const offset = positionToOffset(sql, position);
     const completions = session.completeAt(offset);
@@ -165,6 +171,44 @@ export class MySqlQueryLanguageService implements QueryLanguageService {
     }
     return result;
   }
+
+  format(sql: string): string {
+    if (!sql.trim()) return sql;
+    try {
+      return formatSql(sql, {
+        language: "mysql",
+        keywordCase: "upper",
+        tabWidth: 2,
+        linesBetweenQueries: 1,
+      });
+    } catch {
+      return sql;
+    }
+  }
+}
+
+function schemaForCatalog(catalog?: QueryCompletionCatalog): Schema | undefined {
+  if (!catalog || catalog.providerId.trim().toLowerCase() !== "mysql") return undefined;
+  return new Schema(toMySqlSchema(catalog));
+}
+
+function normalizeSemanticDiagnostic(diagnostic: SqllensSemanticDiagnostic): SqlDiagnostic {
+  const startColumn = diagnostic.column + 1;
+  const endColumn = diagnostic.endColumn + 1;
+  const source: SqlDiagnostic["source"] = diagnostic.kind === "wrong-arity" || diagnostic.kind === "wrong-argument-type"
+    ? "semantic"
+    : "catalog";
+  return {
+    severity: "warning",
+    source,
+    message: diagnostic.message,
+    startLineNumber: diagnostic.line,
+    startColumn,
+    endLineNumber: diagnostic.endLine,
+    endColumn: diagnostic.endLine === diagnostic.line
+      ? Math.max(endColumn, startColumn + 1)
+      : Math.max(endColumn, 1),
+  };
 }
 
 function sourceEntities(session: SqlSession, offset?: number): SqlEntityReference[] {
