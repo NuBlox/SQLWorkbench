@@ -21,6 +21,7 @@
   let monacoApi: typeof Monaco | undefined;
   let languageService: QueryLanguageService | undefined;
   let languageProviderId = "";
+  let diagnosticsCatalogVersion = "";
   let loadError = "";
   let internalChange = false;
   let diagnosticsTimer: ReturnType<typeof setTimeout> | undefined;
@@ -28,6 +29,7 @@
   onMount(() => {
     let disposed = false;
     let completionDisposable: Monaco.IDisposable | undefined;
+    let formattingDisposable: Monaco.IDisposable | undefined;
 
     void setup().catch((error: unknown) => {
       loadError = error instanceof Error ? error.message : String(error);
@@ -60,6 +62,7 @@
       });
       editor = createdEditor;
       configureLanguageService();
+      diagnosticsCatalogVersion = completionCatalog?.capturedAt ?? "";
       scheduleDiagnostics();
 
       createdEditor.onDidChangeModelContent(() => {
@@ -98,11 +101,29 @@
         },
       });
 
+      formattingDisposable = monaco.languages.registerDocumentFormattingEditProvider("sql", {
+        provideDocumentFormattingEdits(model) {
+          if (model !== editor?.getModel() || !languageService) return [];
+          const formatted = languageService.format(model.getValue());
+          if (formatted === model.getValue()) return [];
+          return [{ range: model.getFullModelRange(), text: formatted }];
+        },
+      });
+
       createdEditor.addAction({
         id: "nublox.run-statement",
         label: "Run current statement",
         keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
         run: () => onRunStatement(),
+      });
+
+      createdEditor.addAction({
+        id: "nublox.format-sql",
+        label: "Format SQL",
+        keybindings: [monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF],
+        run: async () => {
+          await createdEditor.getAction("editor.action.formatDocument")?.run();
+        },
       });
     }
 
@@ -111,6 +132,7 @@
       if (diagnosticsTimer) clearTimeout(diagnosticsTimer);
       const model = editor?.getModel();
       if (model && monacoApi) monacoApi.editor.setModelMarkers(model, "nublox-query-language", []);
+      formattingDisposable?.dispose();
       completionDisposable?.dispose();
       editor?.dispose();
       editor = undefined;
@@ -129,6 +151,11 @@
 
   $: if (editor && providerId !== languageProviderId) {
     configureLanguageService();
+    scheduleDiagnostics();
+  }
+
+  $: if (editor && (completionCatalog?.capturedAt ?? "") !== diagnosticsCatalogVersion) {
+    diagnosticsCatalogVersion = completionCatalog?.capturedAt ?? "";
     scheduleDiagnostics();
   }
 
@@ -153,7 +180,7 @@
       monacoApi.editor.setModelMarkers(model, "nublox-query-language", []);
       return;
     }
-    const diagnostics = languageService.parse(model.getValue()).diagnostics;
+    const diagnostics = languageService.parse(model.getValue(), undefined, completionCatalog).diagnostics;
     monacoApi.editor.setModelMarkers(model, "nublox-query-language", diagnostics.map((diagnostic) => ({
       severity: diagnostic.severity === "error"
         ? monacoApi!.MarkerSeverity.Error
@@ -161,7 +188,11 @@
           ? monacoApi!.MarkerSeverity.Warning
           : monacoApi!.MarkerSeverity.Info,
       message: diagnostic.message,
-      source: "NuBlox SQL",
+      source: diagnostic.source === "parser"
+        ? "NuBlox SQL parser"
+        : diagnostic.source === "catalog"
+          ? "NuBlox live catalogue"
+          : "NuBlox SQL semantics",
       startLineNumber: diagnostic.startLineNumber,
       startColumn: diagnostic.startColumn,
       endLineNumber: diagnostic.endLineNumber,
@@ -202,6 +233,10 @@
 
   export function getScriptText(): string {
     return editor?.getValue() ?? value;
+  }
+
+  export async function formatDocument(): Promise<void> {
+    await editor?.getAction("editor.action.formatDocument")?.run();
   }
 
   export function focus(): void {
