@@ -1,0 +1,21 @@
+{
+  "name": "@nublox/sql-workbench",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NuBlox SQL Workbench monorepo",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "check": "pnpm run build && pnpm -r check",
+    "test": "pnpm -r test",
+    "verify": "pnpm run check && pnpm run test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.3"
+  },
+  "packageManager": "pnpm@10.0.0"
+}
