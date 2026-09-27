@@ -17,6 +17,10 @@
     "./visual-query": {
       "types": "./dist/visual-query.d.ts",
       "import": "./dist/visual-query.js"
+    },
+    "./query-insights": {
+      "types": "./dist/query-insights.d.ts",
+      "import": "./dist/query-insights.js"
     }
   },
   "scripts": {
