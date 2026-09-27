@@ -21,16 +21,8 @@
     });
 
     async function setup(): Promise<void> {
-      const workerModule = await import("monaco-editor/esm/vs/editor/editor.worker.js?worker");
       const monaco = await import("monaco-editor");
       if (disposed) return;
-
-      const globals = globalThis as typeof globalThis & {
-        MonacoEnvironment?: { getWorker(): Worker };
-      };
-      globals.MonacoEnvironment = {
-        getWorker: () => new workerModule.default(),
-      };
 
       const createdEditor = monaco.editor.create(host, {
         value,
