@@ -9,7 +9,6 @@
     type VisualQueryModel,
     type VisualQueryOrderDirection,
     type VisualQueryRelationOption,
-    type VisualQuerySource,
   } from "@nublox/workbench-query-engineering/visual-query";
   import type { QueryCompletionCatalog } from "$lib/desktop-api";
 
@@ -34,18 +33,42 @@
   let filters: FilterDraft[] = [];
   let groups: GroupDraft[] = [];
   let orders: OrderDraft[] = [];
+  let relations: readonly VisualQueryRelationOption[] = [];
+  let sourceOptions: SourceOption[] = [];
+  let preview: { sql: string; error: string } = { sql: "", error: "" };
 
   $: relations = visualQueryRelations(catalog);
   $: if ((catalog?.capturedAt ?? "") !== catalogVersion) {
     catalogVersion = catalog?.capturedAt ?? "";
     reset();
   }
-  $: sourceOptions = buildSourceOptions();
-  $: preview = buildPreview();
+  $: {
+    baseKey;
+    baseAlias;
+    joins;
+    relations;
+    sourceOptions = buildSourceOptions();
+  }
+  $: {
+    catalog;
+    relations;
+    baseKey;
+    baseAlias;
+    distinct;
+    limitText;
+    projections;
+    joins;
+    filters;
+    groups;
+    orders;
+    sourceOptions;
+    preview = buildPreview();
+  }
 
   function reset(): void {
+    const available = visualQueryRelations(catalog);
     sequence = 0;
-    baseKey = relations[0]?.key ?? "";
+    baseKey = available[0]?.key ?? "";
     baseAlias = "t1";
     distinct = false;
     limitText = "100";
@@ -78,10 +101,6 @@
 
   function columnsFor(sourceId: string): readonly string[] {
     return sourceOptions.find((source) => source.id === sourceId)?.relation.columns ?? [];
-  }
-
-  function sourceLabel(sourceId: string): string {
-    return sourceOptions.find((source) => source.id === sourceId)?.label ?? sourceId;
   }
 
   function addProjection(): void {
@@ -179,7 +198,10 @@
   }
 
   function filterValue(filter: FilterDraft) {
-    if (filter.valueKind === "number") return { kind: "number" as const, value: Number(filter.value) };
+    if (filter.valueKind === "number") {
+      const value = filter.value.trim();
+      return { kind: "number" as const, value: value ? Number(value) : Number.NaN };
+    }
     if (filter.valueKind === "boolean") return { kind: "boolean" as const, value: filter.value === "true" };
     return { kind: "text" as const, value: filter.value };
   }
@@ -209,7 +231,7 @@
         <label><span>FROM</span><select bind:value={baseKey}>{#each relations as item (item.key)}<option value={item.key}>{item.namespaceLabel}.{item.name} · {item.kind}</option>{/each}</select></label>
         <label class="alias"><span>Alias</span><input bind:value={baseAlias} placeholder="t1" /></label>
         <label class="check"><input type="checkbox" bind:checked={distinct} /><span>DISTINCT</span></label>
-        <label class="limit"><span>Limit</span><input type="number" min="1" step="1" bind:value={limitText} /></label>
+        <label class="limit"><span>Limit</span><input inputmode="numeric" bind:value={limitText} placeholder="100" /></label>
       </div>
 
       <div class="section">
@@ -272,11 +294,11 @@
       <div class="two-sections">
         <div class="section compact">
           <div class="section-heading"><div><strong>Group by</strong></div><button type="button" onclick={addGroup}>+ Group</button></div>
-          {#each groups as item (item.id)}<div class="row compact-row"><select bind:value={item.sourceId}>{#each sourceOptions as source (source.id)}<option value={source.id}>{source.label}</option>{/each}</select><select bind:value={item.column}>{#each columnsFor(item.sourceId) as column}<option value={column}>{column}</option>{/each}</select><button class="remove" type="button" onclick={() => removeGroup(item.id)}>×</button></div>{/each}
+          {#each groups as item (item.id)}<div class="row compact-row"><select bind:value={item.sourceId}>{#each sourceOptions as source (source.id)}<option value={source.id}>{source.label}</option>{/each}</select><select bind:value={item.column}>{#each columnsFor(item.sourceId) as column}<option value={column}>{column}</option>{/each}</select><button class="remove" type="button" aria-label="Remove group" onclick={() => removeGroup(item.id)}>×</button></div>{/each}
         </div>
         <div class="section compact">
           <div class="section-heading"><div><strong>Order by</strong></div><button type="button" onclick={addOrder}>+ Order</button></div>
-          {#each orders as item (item.id)}<div class="row compact-row"><select bind:value={item.sourceId}>{#each sourceOptions as source (source.id)}<option value={source.id}>{source.label}</option>{/each}</select><select bind:value={item.column}>{#each columnsFor(item.sourceId) as column}<option value={column}>{column}</option>{/each}</select><select bind:value={item.direction}><option value="asc">ASC</option><option value="desc">DESC</option></select><button class="remove" type="button" onclick={() => removeOrder(item.id)}>×</button></div>{/each}
+          {#each orders as item (item.id)}<div class="row compact-row"><select bind:value={item.sourceId}>{#each sourceOptions as source (source.id)}<option value={source.id}>{source.label}</option>{/each}</select><select bind:value={item.column}>{#each columnsFor(item.sourceId) as column}<option value={column}>{column}</option>{/each}</select><select bind:value={item.direction}><option value="asc">ASC</option><option value="desc">DESC</option></select><button class="remove" type="button" aria-label="Remove order" onclick={() => removeOrder(item.id)}>×</button></div>{/each}
         </div>
       </div>
     {/if}
