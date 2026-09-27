@@ -13,6 +13,10 @@
     "./explain-plan": {
       "types": "./dist/explain-plan.d.ts",
       "import": "./dist/explain-plan.js"
+    },
+    "./visual-query": {
+      "types": "./dist/visual-query.d.ts",
+      "import": "./dist/visual-query.js"
     }
   },
   "scripts": {
