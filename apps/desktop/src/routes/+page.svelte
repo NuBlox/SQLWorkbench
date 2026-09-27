@@ -2,10 +2,11 @@
   import { onMount } from "svelte";
   import ConnectionsWorkspace from "$lib/ConnectionsWorkspace.svelte";
   import DatabaseExplorer from "$lib/DatabaseExplorer.svelte";
+  import SchemaDesigner from "$lib/SchemaDesigner.svelte";
   import SqlWorkspace from "$lib/SqlWorkspace.svelte";
 
   type Workspace = "Developer" | "DBA" | "Architect" | "Data Engineer" | "Security";
-  type Module = "connections" | "sql" | "explorer";
+  type Module = "connections" | "sql" | "explorer" | "schema";
 
   const workspaces: readonly Workspace[] = ["Developer", "DBA", "Architect", "Data Engineer", "Security"];
   let workspace: Workspace = "Developer";
@@ -16,7 +17,11 @@
     ? { milestone: "M1 · Desktop SQL Development", title: "Connection workspace", description: "Manage database identities and live MySQL sessions." }
     : activeModule === "sql"
       ? { milestone: "M1 · Desktop SQL Development", title: "SQL Editor", description: "Author, execute, cancel, review and export SQL results." }
-      : { milestone: "M2 · Database Explorer", title: "Database Explorer", description: "Browse live database metadata lazily, search objects and inspect security visibility." };
+      : activeModule === "explorer"
+        ? { milestone: "M2 · Database Explorer", title: "Database Explorer", description: "Browse live database metadata lazily, search objects and inspect security visibility." }
+        : { milestone: "M4 · Schema Engineering", title: "Schema Designer", description: "Reverse-engineer live tables, evolve logical metadata, compare drift and preview provider DDL." };
+
+  $: phaseLabel = activeModule === "schema" ? "M4 active" : activeModule === "explorer" ? "M2 complete" : "M1 complete";
 
   onMount(() => { void window.nublox.app.version().then((value) => { version = value; }); });
 </script>
@@ -34,7 +39,7 @@
       <button class="nav-item" class:active={activeModule === "connections"} type="button" onclick={() => (activeModule = "connections")}><span class="nav-icon">◎</span>Connections</button>
       <button class="nav-item" class:active={activeModule === "sql"} type="button" onclick={() => (activeModule = "sql")}><span class="nav-icon">⌘</span>SQL Editor</button>
       <button class="nav-item" class:active={activeModule === "explorer"} type="button" onclick={() => (activeModule = "explorer")}><span class="nav-icon">◇</span>Database Explorer</button>
-      <button class="nav-item" type="button" disabled><span class="nav-icon">△</span>Schema Designer<small>M4</small></button>
+      <button class="nav-item" class:active={activeModule === "schema"} type="button" onclick={() => (activeModule = "schema")}><span class="nav-icon">△</span>Schema Designer<small>M4</small></button>
       <button class="nav-item" type="button" disabled><span class="nav-icon">◫</span>Administration<small>M6</small></button>
     </nav>
     <div class="sidebar-footer"><span>{workspace}</span>{#if version}<span>v{version}</span>{/if}</div>
@@ -43,9 +48,17 @@
   <main class="main-area">
     <header class="topbar">
       <div><p class="eyebrow">{heading.milestone}</p><h1>{heading.title}</h1><p>{heading.description}</p></div>
-      <div class="phase-pill"><span></span>{activeModule === "explorer" ? "M2 active" : "M1 complete"}</div>
+      <div class="phase-pill"><span></span>{phaseLabel}</div>
     </header>
-    {#if activeModule === "connections"}<ConnectionsWorkspace />{:else if activeModule === "sql"}<SqlWorkspace />{:else}<DatabaseExplorer />{/if}
+    {#if activeModule === "connections"}
+      <ConnectionsWorkspace />
+    {:else if activeModule === "sql"}
+      <SqlWorkspace />
+    {:else if activeModule === "explorer"}
+      <DatabaseExplorer />
+    {:else}
+      <SchemaDesigner />
+    {/if}
   </main>
 </div>
 
