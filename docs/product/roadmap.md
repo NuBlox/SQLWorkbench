@@ -32,6 +32,8 @@ The application UX and feature prioritisation should be informed by the database
 - [x] messages and execution timing
 - [x] query history
 - [x] CSV/JSON export
+- [x] file-protocol-safe prerendered desktop entry point
+- [x] renderer build-output regression test
 
 ## M2 — Database explorer
 
@@ -73,8 +75,8 @@ The application UX and feature prioritisation should be informed by the database
 - [x] dialect-aware parser services
 - [x] completion from live catalogue metadata
 - [x] positioned syntax diagnostics
-- [ ] semantic linting and diagnostics
-- [ ] formatting
+- [x] semantic linting and diagnostics
+- [x] formatting
 - [ ] visual query builder
 - [ ] explain-plan visualization
 - [ ] query statistics and plan history
