@@ -37,6 +37,7 @@ export interface DatabaseCapabilities {
   readonly queryCancellation: boolean;
   readonly objectSearch?: boolean;
   readonly privilegeIntrospection?: boolean;
+  readonly migrationPreview?: boolean;
   readonly serverAdministration: boolean;
   readonly userAdministration: boolean;
 }
@@ -87,11 +88,44 @@ export interface DatabaseExplorerProvider {
   search(session: DatabaseSession, request: ExplorerSearchRequest): Promise<readonly DatabaseSearchResult[]>;
 }
 
+export type DatabaseReferentialAction = "restrict" | "cascade" | "detach";
+
+export type DatabaseSchemaChangeOperation =
+  | { readonly kind: "add-column"; readonly table: string; readonly column: string; readonly logicalType: string; readonly databaseType?: string; readonly nullable: boolean; readonly destructive: false }
+  | { readonly kind: "drop-column"; readonly table: string; readonly column: string; readonly destructive: true }
+  | { readonly kind: "alter-column"; readonly table: string; readonly column: string; readonly logicalType: string; readonly databaseType?: string; readonly nullable: boolean; readonly destructive: boolean }
+  | { readonly kind: "add-foreign-key"; readonly table: string; readonly name: string; readonly columns: readonly string[]; readonly referencedCatalog?: string; readonly referencedSchema?: string; readonly referencedTable: string; readonly referencedColumns: readonly string[]; readonly onDelete?: DatabaseReferentialAction; readonly destructive: false }
+  | { readonly kind: "drop-foreign-key"; readonly table: string; readonly name: string; readonly destructive: true }
+  | { readonly kind: "create-index"; readonly table: string; readonly name: string; readonly unique: boolean; readonly columns: readonly string[]; readonly destructive: false }
+  | { readonly kind: "drop-index"; readonly table: string; readonly name: string; readonly destructive: true };
+
+export interface DatabaseSchemaChangePlan {
+  readonly source: string;
+  readonly catalog?: string;
+  readonly schema?: string;
+  readonly table: string;
+  readonly operations: readonly DatabaseSchemaChangeOperation[];
+  readonly destructive: boolean;
+}
+
+export interface DatabaseMigrationPreview {
+  readonly providerId: string;
+  readonly statements: readonly string[];
+  readonly destructive: boolean;
+  readonly warnings: readonly string[];
+}
+
+export interface DatabaseMigrationProvider {
+  readonly providerId: string;
+  preview(plan: DatabaseSchemaChangePlan): DatabaseMigrationPreview;
+}
+
 export interface DatabaseProvider {
   readonly id: string;
   readonly displayName: string;
   readonly capabilities: DatabaseCapabilities;
   readonly explorer?: DatabaseExplorerProvider;
+  readonly migrations?: DatabaseMigrationProvider;
   connect(config: DatabaseConnectionConfig): Promise<DatabaseSession>;
   introspect(session: DatabaseSession, options?: IntrospectionOptions): Promise<DatabaseCatalog>;
   execute(session: DatabaseSession, request: QueryRequest): Promise<QueryExecution>;

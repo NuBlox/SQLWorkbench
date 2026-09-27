@@ -1,5 +1,5 @@
 {
-  "name": "@nublox/workbench-provider-mysql",
+  "name": "@nublox/workbench-metaobject-bridge",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,9 +10,9 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./migration": {
-      "types": "./dist/migration.d.ts",
-      "import": "./dist/migration.js"
+    "./provider-handoff": {
+      "types": "./dist/provider-handoff.d.ts",
+      "import": "./dist/provider-handoff.js"
     }
   },
   "scripts": {
@@ -20,7 +20,7 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
-    "@nublox/mysql": "github:NuBlox/NuBloxSQL#0134f576dfdea35b2ac14b10ab2279562f5176ea",
+    "@nublox/metaobject": "github:NuBlox/metaobject#4de98bcf4501ddcee6bd5fd669589db27891a13a",
     "@nublox/workbench-catalog": "workspace:*",
     "@nublox/workbench-provider-api": "workspace:*"
   }
