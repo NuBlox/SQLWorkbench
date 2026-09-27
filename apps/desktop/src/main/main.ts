@@ -2,13 +2,7 @@ import { writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import {
-  app,
-  BrowserWindow,
-  dialog,
-  ipcMain,
-  safeStorage,
-} from "electron";
+import { app, BrowserWindow, dialog, ipcMain, safeStorage } from "electron";
 import { JsonConnectionProfileRepository } from "@nublox/workbench-connection-profiles";
 import { ConnectionManager, ProviderRegistry } from "@nublox/workbench-core";
 import { MySqlDatabaseProvider } from "@nublox/workbench-provider-mysql";
@@ -17,16 +11,15 @@ import type {
   DeleteProfileRequest,
   ExecuteQueryRequest,
   ExplorerNamespaceRequest,
+  ExplorerPrivilegeRequest,
   ExplorerRelationDetailsRequest,
   ExplorerRelationRequest,
+  ExplorerSearchRequest,
   ExportResultRequest,
   ExportResultResponse,
   SaveProfileRequest,
 } from "../lib/desktop-api.js";
-import {
-  EncryptedFileCredentialStore,
-  type SecretCipher,
-} from "./encrypted-credential-store.js";
+import { EncryptedFileCredentialStore, type SecretCipher } from "./encrypted-credential-store.js";
 import { QueryHistoryStore } from "./query-history-store.js";
 import { serializeResultSetCsv, serializeResultSetJson } from "./result-export.js";
 import { DesktopServices } from "./services.js";
@@ -42,6 +35,13 @@ const IPC = Object.freeze({
   explorerNamespaces: "nublox:explorer:namespaces",
   explorerRelations: "nublox:explorer:relations",
   explorerDescribe: "nublox:explorer:describe",
+  explorerRoutines: "nublox:explorer:routines",
+  explorerTriggers: "nublox:explorer:triggers",
+  explorerEvents: "nublox:explorer:events",
+  explorerPrincipals: "nublox:explorer:principals",
+  explorerRoles: "nublox:explorer:roles",
+  explorerPrivileges: "nublox:explorer:privileges",
+  explorerSearch: "nublox:explorer:search",
   queriesExecute: "nublox:queries:execute",
   queriesCancel: "nublox:queries:cancel",
   historyList: "nublox:history:list",
@@ -60,42 +60,27 @@ app.whenReady().then(async () => {
   services = createServices();
   registerIpc(services);
   await createWindow();
-
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      void createWindow();
-    }
-  });
+  app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) void createWindow(); });
 }).catch((error: unknown) => {
   console.error("Failed to start NuBlox SQL Workbench.", error);
   app.quit();
 });
 
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
-});
-
+app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
 app.on("before-quit", (event) => {
   if (allowQuit || !services) return;
   event.preventDefault();
   allowQuit = true;
   services.cancelAllQueries();
   void services.connections.disconnectAll()
-    .catch((error: unknown) => {
-      console.error("Failed to close one or more database sessions.", error);
-    })
+    .catch((error: unknown) => console.error("Failed to close one or more database sessions.", error))
     .finally(() => app.quit());
 });
 
 function createServices(): DesktopServices {
   const userData = app.getPath("userData");
-  const profiles = new JsonConnectionProfileRepository(
-    join(userData, "connection-profiles.json"),
-  );
-  const credentials = new EncryptedFileCredentialStore(
-    join(userData, "connection-credentials.json"),
-    createSafeStorageCipher(),
-  );
+  const profiles = new JsonConnectionProfileRepository(join(userData, "connection-profiles.json"));
+  const credentials = new EncryptedFileCredentialStore(join(userData, "connection-credentials.json"), createSafeStorageCipher());
   const history = new QueryHistoryStore(join(userData, "query-history.json"));
   const providers = new ProviderRegistry();
   providers.register(new MySqlDatabaseProvider());
@@ -132,10 +117,8 @@ async function createWindow(): Promise<void> {
       sandbox: true,
     },
   });
-
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   window.once("ready-to-show", () => window.show());
-
   const renderer = resolve(currentDirectory, "../../../build/renderer/index.html");
   await window.loadFile(renderer);
   window.webContents.on("will-navigate", (event) => event.preventDefault());
@@ -143,77 +126,41 @@ async function createWindow(): Promise<void> {
 
 function registerIpc(desktop: DesktopServices): void {
   ipcMain.handle(IPC.profilesList, () => desktop.listProfiles());
-  ipcMain.handle(
-    IPC.profilesSave,
-    (_event, request: SaveProfileRequest) => desktop.saveProfile(request),
-  );
-  ipcMain.handle(
-    IPC.profilesRemove,
-    (_event, request: DeleteProfileRequest) => desktop.removeProfile(request),
-  );
-  ipcMain.handle(
-    IPC.profilesClearCredential,
-    (_event, profileId: string) => desktop.clearCredential(profileId),
-  );
+  ipcMain.handle(IPC.profilesSave, (_event, request: SaveProfileRequest) => desktop.saveProfile(request));
+  ipcMain.handle(IPC.profilesRemove, (_event, request: DeleteProfileRequest) => desktop.removeProfile(request));
+  ipcMain.handle(IPC.profilesClearCredential, (_event, profileId: string) => desktop.clearCredential(profileId));
   ipcMain.handle(IPC.connectionsList, () => desktop.listConnections());
-  ipcMain.handle(
-    IPC.connectionsConnect,
-    (_event, profileId: string) => desktop.connectProfile(profileId),
-  );
-  ipcMain.handle(
-    IPC.connectionsDisconnect,
-    (_event, profileId: string) => desktop.disconnectProfile(profileId),
-  );
-  ipcMain.handle(
-    IPC.explorerNamespaces,
-    (_event, request: ExplorerNamespaceRequest) => desktop.listExplorerNamespaces(request),
-  );
-  ipcMain.handle(
-    IPC.explorerRelations,
-    (_event, request: ExplorerRelationRequest) => desktop.listExplorerRelations(request),
-  );
-  ipcMain.handle(
-    IPC.explorerDescribe,
-    (_event, request: ExplorerRelationDetailsRequest) => desktop.describeExplorerRelation(request),
-  );
-  ipcMain.handle(
-    IPC.queriesExecute,
-    (_event, request: ExecuteQueryRequest) => desktop.executeQuery(request),
-  );
-  ipcMain.handle(
-    IPC.queriesCancel,
-    (_event, executionId: string) => desktop.cancelQuery(executionId),
-  );
-  ipcMain.handle(
-    IPC.historyList,
-    (_event, limit?: number) => desktop.listHistory(limit),
-  );
+  ipcMain.handle(IPC.connectionsConnect, (_event, profileId: string) => desktop.connectProfile(profileId));
+  ipcMain.handle(IPC.connectionsDisconnect, (_event, profileId: string) => desktop.disconnectProfile(profileId));
+  ipcMain.handle(IPC.explorerNamespaces, (_event, request: ExplorerNamespaceRequest) => desktop.listExplorerNamespaces(request));
+  ipcMain.handle(IPC.explorerRelations, (_event, request: ExplorerRelationRequest) => desktop.listExplorerRelations(request));
+  ipcMain.handle(IPC.explorerDescribe, (_event, request: ExplorerRelationDetailsRequest) => desktop.describeExplorerRelation(request));
+  ipcMain.handle(IPC.explorerRoutines, (_event, request: ExplorerRelationRequest) => desktop.listExplorerRoutines(request));
+  ipcMain.handle(IPC.explorerTriggers, (_event, request: ExplorerRelationRequest) => desktop.listExplorerTriggers(request));
+  ipcMain.handle(IPC.explorerEvents, (_event, request: ExplorerRelationRequest) => desktop.listExplorerEvents(request));
+  ipcMain.handle(IPC.explorerPrincipals, (_event, connectionId: string) => desktop.listExplorerPrincipals(connectionId));
+  ipcMain.handle(IPC.explorerRoles, (_event, connectionId: string) => desktop.listExplorerRoleGrants(connectionId));
+  ipcMain.handle(IPC.explorerPrivileges, (_event, request: ExplorerPrivilegeRequest) => desktop.listExplorerPrivileges(request));
+  ipcMain.handle(IPC.explorerSearch, (_event, request: ExplorerSearchRequest) => desktop.searchExplorer(request));
+  ipcMain.handle(IPC.queriesExecute, (_event, request: ExecuteQueryRequest) => desktop.executeQuery(request));
+  ipcMain.handle(IPC.queriesCancel, (_event, executionId: string) => desktop.cancelQuery(executionId));
+  ipcMain.handle(IPC.historyList, (_event, limit?: number) => desktop.listHistory(limit));
   ipcMain.handle(IPC.historyClear, () => desktop.clearHistory());
-  ipcMain.handle(
-    IPC.resultsExport,
-    (_event, request: ExportResultRequest) => exportResult(request),
-  );
+  ipcMain.handle(IPC.resultsExport, (_event, request: ExportResultRequest) => exportResult(request));
   ipcMain.handle(IPC.appVersion, () => app.getVersion());
 }
 
 async function exportResult(request: ExportResultRequest): Promise<ExportResultResponse> {
   const extension = request.format === "csv" ? "csv" : "json";
   const safeName = sanitizeFileName(request.suggestedName || `query-result.${extension}`);
-  const defaultPath = safeName.toLowerCase().endsWith(`.${extension}`)
-    ? safeName
-    : `${safeName}.${extension}`;
+  const defaultPath = safeName.toLowerCase().endsWith(`.${extension}`) ? safeName : `${safeName}.${extension}`;
   const result = await dialog.showSaveDialog({
     title: `Export query results as ${extension.toUpperCase()}`,
     defaultPath,
-    filters: request.format === "csv"
-      ? [{ name: "CSV files", extensions: ["csv"] }]
-      : [{ name: "JSON files", extensions: ["json"] }],
+    filters: request.format === "csv" ? [{ name: "CSV files", extensions: ["csv"] }] : [{ name: "JSON files", extensions: ["json"] }],
   });
-
   if (result.canceled || !result.filePath) return { canceled: true };
-  const content = request.format === "csv"
-    ? serializeResultSetCsv(request.resultSet)
-    : serializeResultSetJson(request.resultSet);
+  const content = request.format === "csv" ? serializeResultSetCsv(request.resultSet) : serializeResultSetJson(request.resultSet);
   await writeFile(result.filePath, content, { encoding: "utf8", mode: 0o600 });
   return { canceled: false, path: result.filePath };
 }

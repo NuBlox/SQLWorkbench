@@ -4,21 +4,39 @@ import type {
   ConnectionProfileDraft,
 } from "@nublox/workbench-connection-profiles";
 import type {
+  ExplorerEvent,
   ExplorerNamespace,
   ExplorerNamespaceRequest,
+  ExplorerPrincipal,
+  ExplorerPrivilege,
+  ExplorerPrivilegeRequest,
   ExplorerRelation,
   ExplorerRelationDetails,
   ExplorerRelationDetailsRequest,
   ExplorerRelationRequest,
+  ExplorerRoleGrant,
+  ExplorerRoutine,
+  ExplorerSearchRequest,
+  ExplorerSearchResult,
+  ExplorerTrigger,
 } from "@nublox/workbench-core";
 
 export type {
+  ExplorerEvent,
   ExplorerNamespace,
   ExplorerNamespaceRequest,
+  ExplorerPrincipal,
+  ExplorerPrivilege,
+  ExplorerPrivilegeRequest,
   ExplorerRelation,
   ExplorerRelationDetails,
   ExplorerRelationDetailsRequest,
   ExplorerRelationRequest,
+  ExplorerRoleGrant,
+  ExplorerRoutine,
+  ExplorerSearchRequest,
+  ExplorerSearchResult,
+  ExplorerTrigger,
 } from "@nublox/workbench-core";
 
 export interface SaveProfileRequest {
@@ -26,12 +44,7 @@ export interface SaveProfileRequest {
   readonly expectedRevision?: number;
   readonly credential?: ConnectionCredential;
 }
-
-export interface DeleteProfileRequest {
-  readonly id: string;
-  readonly expectedRevision: number;
-}
-
+export interface DeleteProfileRequest { readonly id: string; readonly expectedRevision: number; }
 export interface OpenConnectionInfo {
   readonly id: string;
   readonly profileId: string;
@@ -44,14 +57,7 @@ export interface OpenConnectionInfo {
 
 export type QueryRunMode = "statement" | "selection" | "script";
 export type QueryCellValue = string | number | boolean | null;
-
-export interface QueryColumnView {
-  readonly name: string;
-  readonly table?: string;
-  readonly catalog?: string;
-  readonly databaseType?: string;
-}
-
+export interface QueryColumnView { readonly name: string; readonly table?: string; readonly catalog?: string; readonly databaseType?: string; }
 export interface QueryResultSetView {
   readonly columns: readonly QueryColumnView[];
   readonly rows: readonly Readonly<Record<string, QueryCellValue>>[];
@@ -61,7 +67,6 @@ export interface QueryResultSetView {
   readonly warningCount?: number;
   readonly message?: string;
 }
-
 export interface QueryExecutionView {
   readonly executionId: string;
   readonly connectionId: string;
@@ -72,7 +77,6 @@ export interface QueryExecutionView {
   readonly statementCount: number;
   readonly resultSets: readonly QueryResultSetView[];
 }
-
 export interface ExecuteQueryRequest {
   readonly executionId: string;
   readonly connectionId: string;
@@ -80,9 +84,7 @@ export interface ExecuteQueryRequest {
   readonly mode: QueryRunMode;
   readonly timeoutMs?: number;
 }
-
 export type QueryHistoryStatus = "success" | "error" | "cancelled";
-
 export interface QueryHistoryEntry {
   readonly id: string;
   readonly connectionId: string;
@@ -95,19 +97,9 @@ export interface QueryHistoryEntry {
   readonly resultSetCount: number;
   readonly message?: string;
 }
-
 export type ExportFormat = "csv" | "json";
-
-export interface ExportResultRequest {
-  readonly format: ExportFormat;
-  readonly suggestedName: string;
-  readonly resultSet: QueryResultSetView;
-}
-
-export interface ExportResultResponse {
-  readonly canceled: boolean;
-  readonly path?: string;
-}
+export interface ExportResultRequest { readonly format: ExportFormat; readonly suggestedName: string; readonly resultSet: QueryResultSetView; }
+export interface ExportResultResponse { readonly canceled: boolean; readonly path?: string; }
 
 export interface DesktopApi {
   readonly profiles: {
@@ -125,6 +117,13 @@ export interface DesktopApi {
     namespaces(request: ExplorerNamespaceRequest): Promise<readonly ExplorerNamespace[]>;
     relations(request: ExplorerRelationRequest): Promise<readonly ExplorerRelation[]>;
     describe(request: ExplorerRelationDetailsRequest): Promise<ExplorerRelationDetails>;
+    routines(request: ExplorerRelationRequest): Promise<readonly ExplorerRoutine[]>;
+    triggers(request: ExplorerRelationRequest): Promise<readonly ExplorerTrigger[]>;
+    events(request: ExplorerRelationRequest): Promise<readonly ExplorerEvent[]>;
+    principals(connectionId: string): Promise<readonly ExplorerPrincipal[]>;
+    roles(connectionId: string): Promise<readonly ExplorerRoleGrant[]>;
+    privileges(request: ExplorerPrivilegeRequest): Promise<readonly ExplorerPrivilege[]>;
+    search(request: ExplorerSearchRequest): Promise<readonly ExplorerSearchResult[]>;
   };
   readonly queries: {
     execute(request: ExecuteQueryRequest): Promise<QueryExecutionView>;
@@ -134,10 +133,6 @@ export interface DesktopApi {
     list(limit?: number): Promise<readonly QueryHistoryEntry[]>;
     clear(): Promise<void>;
   };
-  readonly results: {
-    export(request: ExportResultRequest): Promise<ExportResultResponse>;
-  };
-  readonly app: {
-    version(): Promise<string>;
-  };
+  readonly results: { export(request: ExportResultRequest): Promise<ExportResultResponse>; };
+  readonly app: { version(): Promise<string>; };
 }

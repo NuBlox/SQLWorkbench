@@ -35,16 +35,16 @@ The application UX and feature prioritisation should be informed by the database
 
 ## M2 — Database explorer
 
-- [ ] lazy tree loading
-- [ ] databases/schemas
-- [ ] tables and views
-- [ ] columns
-- [ ] indexes
-- [ ] foreign keys
-- [ ] procedures/functions
-- [ ] triggers/events
-- [ ] users/roles/privileges
-- [ ] object search
+- [x] lazy tree loading
+- [x] databases/schemas
+- [x] tables and views
+- [x] columns
+- [x] indexes
+- [x] foreign keys
+- [x] procedures/functions
+- [x] triggers/events
+- [x] users/roles/privileges
+- [x] object search
 
 ## M3 — Metaobject bridge
 

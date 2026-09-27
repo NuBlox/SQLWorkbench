@@ -5,8 +5,10 @@ import type {
   DesktopApi,
   ExecuteQueryRequest,
   ExplorerNamespaceRequest,
+  ExplorerPrivilegeRequest,
   ExplorerRelationDetailsRequest,
   ExplorerRelationRequest,
+  ExplorerSearchRequest,
   ExportResultRequest,
   SaveProfileRequest,
 } from "../lib/desktop-api.js";
@@ -22,6 +24,13 @@ const IPC = Object.freeze({
   explorerNamespaces: "nublox:explorer:namespaces",
   explorerRelations: "nublox:explorer:relations",
   explorerDescribe: "nublox:explorer:describe",
+  explorerRoutines: "nublox:explorer:routines",
+  explorerTriggers: "nublox:explorer:triggers",
+  explorerEvents: "nublox:explorer:events",
+  explorerPrincipals: "nublox:explorer:principals",
+  explorerRoles: "nublox:explorer:roles",
+  explorerPrivileges: "nublox:explorer:privileges",
+  explorerSearch: "nublox:explorer:search",
   queriesExecute: "nublox:queries:execute",
   queriesCancel: "nublox:queries:cancel",
   historyList: "nublox:history:list",
@@ -35,22 +44,24 @@ const api: DesktopApi = Object.freeze({
     list: () => ipcRenderer.invoke(IPC.profilesList),
     save: (request: SaveProfileRequest) => ipcRenderer.invoke(IPC.profilesSave, request),
     remove: (request: DeleteProfileRequest) => ipcRenderer.invoke(IPC.profilesRemove, request),
-    clearCredential: (profileId: string) =>
-      ipcRenderer.invoke(IPC.profilesClearCredential, profileId),
+    clearCredential: (profileId: string) => ipcRenderer.invoke(IPC.profilesClearCredential, profileId),
   }),
   connections: Object.freeze({
     list: () => ipcRenderer.invoke(IPC.connectionsList),
     connect: (profileId: string) => ipcRenderer.invoke(IPC.connectionsConnect, profileId),
-    disconnect: (profileId: string) =>
-      ipcRenderer.invoke(IPC.connectionsDisconnect, profileId),
+    disconnect: (profileId: string) => ipcRenderer.invoke(IPC.connectionsDisconnect, profileId),
   }),
   explorer: Object.freeze({
-    namespaces: (request: ExplorerNamespaceRequest) =>
-      ipcRenderer.invoke(IPC.explorerNamespaces, request),
-    relations: (request: ExplorerRelationRequest) =>
-      ipcRenderer.invoke(IPC.explorerRelations, request),
-    describe: (request: ExplorerRelationDetailsRequest) =>
-      ipcRenderer.invoke(IPC.explorerDescribe, request),
+    namespaces: (request: ExplorerNamespaceRequest) => ipcRenderer.invoke(IPC.explorerNamespaces, request),
+    relations: (request: ExplorerRelationRequest) => ipcRenderer.invoke(IPC.explorerRelations, request),
+    describe: (request: ExplorerRelationDetailsRequest) => ipcRenderer.invoke(IPC.explorerDescribe, request),
+    routines: (request: ExplorerRelationRequest) => ipcRenderer.invoke(IPC.explorerRoutines, request),
+    triggers: (request: ExplorerRelationRequest) => ipcRenderer.invoke(IPC.explorerTriggers, request),
+    events: (request: ExplorerRelationRequest) => ipcRenderer.invoke(IPC.explorerEvents, request),
+    principals: (connectionId: string) => ipcRenderer.invoke(IPC.explorerPrincipals, connectionId),
+    roles: (connectionId: string) => ipcRenderer.invoke(IPC.explorerRoles, connectionId),
+    privileges: (request: ExplorerPrivilegeRequest) => ipcRenderer.invoke(IPC.explorerPrivileges, request),
+    search: (request: ExplorerSearchRequest) => ipcRenderer.invoke(IPC.explorerSearch, request),
   }),
   queries: Object.freeze({
     execute: (request: ExecuteQueryRequest) => ipcRenderer.invoke(IPC.queriesExecute, request),
@@ -63,9 +74,7 @@ const api: DesktopApi = Object.freeze({
   results: Object.freeze({
     export: (request: ExportResultRequest) => ipcRenderer.invoke(IPC.resultsExport, request),
   }),
-  app: Object.freeze({
-    version: () => ipcRenderer.invoke(IPC.appVersion),
-  }),
+  app: Object.freeze({ version: () => ipcRenderer.invoke(IPC.appVersion) }),
 });
 
 contextBridge.exposeInMainWorld("nublox", api);

@@ -2,64 +2,87 @@
 
 ## Purpose
 
-M2 introduces a database-neutral object explorer that can progressively discover a live database without forcing every provider to materialize its complete catalogue for the first tree render.
-
-The explorer remains above the provider boundary:
+M2 provides a database-neutral, progressively loaded object explorer for live database sessions. The renderer does not import a database driver, receive provider instances, or receive credentials.
 
 ```text
-Svelte renderer
-      |
- typed preload API
-      |
- Electron IPC
-      |
-DesktopServices
-      |
+Svelte Database Explorer
+        |
+   typed preload API
+        |
+     Electron IPC
+        |
+   DesktopServices
+        |
 DatabaseExplorerService
-      |
-   QueryService
-      |
-DatabaseProvider.introspect(...)
-      |
-provider-specific catalogue discovery
+        |
+  provider explorer adapter ---- fallback ---- DatabaseProvider.introspect(depth)
+        |
+provider-specific metadata queries
 ```
 
-The renderer never imports a database driver and the core explorer never branches on provider id.
+## Progressive loading
 
-## Introspection depth
+The original progressive contract remains available through `IntrospectionOptions.depth`:
 
-`IntrospectionOptions.depth` defines three provider-neutral discovery levels:
-
-- `namespaces` — server identity and database/schema namespaces only;
-- `relations` — namespaces plus tables and views, without relation internals;
+- `namespaces` — server identity plus database/schema namespaces;
+- `relations` — namespaces plus tables/views without relation internals;
 - `full` — complete normalized catalogue data supported by the provider.
 
-`full` remains the default so existing provider callers retain their previous behaviour.
+`full` remains the compatibility default.
 
-The MySQL provider now avoids the expensive column, index and foreign-key INFORMATION_SCHEMA queries until `full` detail is requested. Namespace discovery does not query tables, and relation discovery does not query columns, indexes or foreign keys.
+For providers that implement the optional `DatabaseExplorerProvider`, `DatabaseExplorerService` prefers fine-grained metadata operations. This avoids hydrating a complete catalogue merely to expand one tree node. Providers that have not adopted the fine-grained adapter continue to work through the progressive introspection fallback.
 
-## Explorer service
+## Fine-grained provider contract
 
-`DatabaseExplorerService` provides three progressively scoped operations:
+`DatabaseExplorerProvider` exposes:
 
-1. `listNamespaces` loads the database/schema level;
-2. `listRelations` loads tables and views for a selected namespace;
-3. `describeRelation` loads columns, indexes and foreign keys for a selected table or view.
+- `listNamespaces`;
+- `listObjects` for tables/views in one namespace;
+- `describeTable` for columns, indexes and foreign keys of one relation;
+- `listRoutines` for procedures/functions;
+- `listTriggers`;
+- `listEvents`;
+- `listPrincipals`;
+- `listRoleGrants`;
+- `listPrivileges`;
+- `search`.
 
-Each operation verifies that the active provider advertises `catalogIntrospection` before requesting metadata.
+The normalized catalogue package owns the cross-provider metadata models. Provider-specific INFORMATION_SCHEMA rows do not escape the provider package.
 
-The service returns normalized explorer view models rather than provider-specific INFORMATION_SCHEMA rows. This keeps the desktop contract suitable for PostgreSQL, SQLite, SQL Server and Oracle providers as they are added.
+## MySQL implementation
+
+The MySQL provider uses INFORMATION_SCHEMA and parameterized metadata queries. Namespace expansion is catalog-scoped, relation detail is table-scoped, and procedures/functions, triggers and scheduled events are loaded only when their categories are requested.
+
+Visible security metadata is derived from INFORMATION_SCHEMA privilege tables and `APPLICABLE_ROLES`. It is intentionally observational: the identity sees only metadata MySQL permits it to see. M2 does not grant, revoke, create or alter users/roles; administrative mutation belongs to M6.
+
+Object search is executed in MySQL across tables/views, routines, triggers and events and returns normalized object-search results. Search results are bounded by the core request limit.
 
 ## Desktop trust boundary
 
-The explorer is exposed to the sandboxed renderer through three typed IPC calls:
+The sandboxed renderer receives narrow typed calls:
 
 - `explorer.namespaces(request)`;
 - `explorer.relations(request)`;
-- `explorer.describe(request)`.
+- `explorer.describe(request)`;
+- `explorer.routines(request)`;
+- `explorer.triggers(request)`;
+- `explorer.events(request)`;
+- `explorer.principals(connectionId)`;
+- `explorer.roles(connectionId)`;
+- `explorer.privileges(request)`;
+- `explorer.search(request)`.
 
-The preload bridge exposes only these narrow operations. Database sessions, provider instances and credentials remain in the Electron main process.
+Database sessions, drivers, provider adapters, filesystem access and credentials remain in the Electron main process.
 
-## Next slice
+## Renderer model
 
-The next M2 slice consumes this API in the Svelte Database Explorer workspace with expandable namespace and relation nodes, relation detail panels, refresh/invalidation controls and object search.
+The M2 workspace is deliberately lazy:
+
+1. selecting a connection loads namespaces;
+2. expanding a namespace loads tables/views for that namespace;
+3. opening a relation loads only that relation's columns/indexes/foreign keys;
+4. routines, triggers and events are separate on-demand groups;
+5. security metadata is loaded only when the security section is opened;
+6. search runs against the provider rather than filtering a fully hydrated client catalogue.
+
+Refresh invalidates renderer caches and reloads namespaces. Connection changes also invalidate explorer state so metadata from one database identity cannot bleed into another session.
