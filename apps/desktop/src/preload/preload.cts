@@ -40,6 +40,7 @@ const IPC = Object.freeze({
   explorerRoles: "nublox:explorer:roles",
   explorerPrivileges: "nublox:explorer:privileges",
   explorerSearch: "nublox:explorer:search",
+  queryLanguageCatalog: "nublox:query-language:catalog",
   schemaLoad: "nublox:schema:load",
   schemaPreview: "nublox:schema:preview",
   schemaGraph: "nublox:schema:graph",
@@ -80,6 +81,9 @@ const api: DesktopApi = Object.freeze({
     roles: (connectionId: string) => ipcRenderer.invoke(IPC.explorerRoles, connectionId),
     privileges: (request: ExplorerPrivilegeRequest) => ipcRenderer.invoke(IPC.explorerPrivileges, request),
     search: (request: ExplorerSearchRequest) => ipcRenderer.invoke(IPC.explorerSearch, request),
+  }),
+  queryLanguage: Object.freeze({
+    catalog: (connectionId: string) => ipcRenderer.invoke(IPC.queryLanguageCatalog, connectionId),
   }),
   schema: Object.freeze({
     load: (request: SchemaLoadRequest) => ipcRenderer.invoke(IPC.schemaLoad, request),
