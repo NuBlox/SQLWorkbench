@@ -4,7 +4,9 @@
 
 NuBlox SQL Workbench owns a provider-aware query-language abstraction in `@nublox/workbench-query-engineering` rather than binding Monaco directly to a parser library.
 
-The first implementation uses `dt-sql-parser@4.5.1` for MySQL syntax parsing, editor-oriented diagnostics and grammar completion. The Workbench-facing interfaces remain NuBlox-owned so parser technology can evolve independently from the desktop renderer.
+The first implementation uses `sqllens@1.11.0` for MySQL syntax parsing, error-tolerant editor diagnostics, statement boundaries, scope-aware grammar completion and schema-fed completion. The Workbench-facing interfaces remain NuBlox-owned so language-engine technology can evolve independently from the desktop renderer.
+
+An earlier branch implementation evaluated `dt-sql-parser@4.5.1`. Its published ESM entry was accepted by the renderer bundler but failed direct Node.js 22 execution because the package imports a directory subpath that the Node ESM resolver rejects. NuBlox does not carry a loader workaround for a foundational language service; the branch moved to a package that passes both browser bundling and direct Node test execution.
 
 ## Responsibilities
 
@@ -49,15 +51,15 @@ SqlWorkspace
 SqlEditor + QueryLanguageService
       |
       +--> syntax diagnostics
-      +--> grammar keywords
+      +--> grammar keywords / functions / CTEs
       +--> live tables / views / columns
 ```
 
-The catalogue snapshot is provider-neutral. The editor refreshes it when the active connection changes, can refresh it manually, and refreshes it after successful schema-changing SQL.
+The catalogue snapshot is provider-neutral. The MySQL adapter converts that snapshot to the language engine's schema mapping only inside the query-engineering package. The editor refreshes the snapshot when the active connection changes, can refresh it manually, and refreshes it after successful schema-changing SQL.
 
 ## Renderer model
 
-Parsing and completion execute in the renderer for low editor latency. The parser receives SQL text and cursor position only; database credentials never cross the preload boundary.
+Parsing and completion execute in the renderer for low editor latency. The language engine receives SQL text, cursor position and non-secret catalogue metadata only; database credentials never cross the preload boundary.
 
 Monaco completion providers are scoped to the owning editor model so other SQL editors do not inherit the wrong connection catalogue.
 
@@ -67,15 +69,19 @@ Parser diagnostics are debounced before being written to Monaco model markers.
 
 The MySQL language service combines:
 
-1. parser-provided SQL keyword candidates;
-2. grammar context indicating relation, column or namespace positions;
+1. grammar-derived SQL keyword and function candidates;
+2. scope-aware relation, CTE, namespace and column positions;
 3. live catalogue tables and views;
-4. live columns narrowed to relations referenced in the active statement;
+4. live columns supplied through the schema mapping;
 5. qualified-column completion such as `orders.`.
+
+NuBlox retains its own normalized completion contract and reclassifies live relation candidates as tables or views for the desktop UI.
 
 ## Future dialects
 
-Additional providers should register a dialect implementation behind the same `QueryLanguageService` contract. PostgreSQL, SQLite, SQL Server and Oracle support must not introduce provider-specific conditionals into Monaco or the desktop workspace.
+Additional providers register a dialect implementation behind the same `QueryLanguageService` contract. `sqllens` currently provides native parser paths that align with planned PostgreSQL, SQLite and T-SQL/SQL Server expansion as well as MySQL/MariaDB. Oracle is not provided by the current language engine and will require a separate NuBlox dialect adapter or an additional compatible engine behind the same contract.
+
+Provider expansion must not introduce provider-specific conditionals into Monaco or the desktop workspace.
 
 ## Next M5 increments
 
