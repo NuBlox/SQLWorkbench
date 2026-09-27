@@ -44,6 +44,8 @@ The provider boundary is capability-driven. Workbench core code must not contain
 - normalized database catalogue package;
 - database-provider contract;
 - provider registry, connection manager and query service;
+- persistent, revisioned connection-profile repository;
+- credential-store abstraction that keeps passwords and TLS private keys outside profile persistence;
 - first MySQL provider backed by `@nublox/mysql`;
 - MySQL connection health verification;
 - query execution and result normalization;
@@ -55,6 +57,8 @@ The provider boundary is capability-driven. Workbench core code must not contain
 See [`docs/product/roadmap.md`](docs/product/roadmap.md) for the delivery sequence.
 
 See [`docs/product/database-personas.md`](docs/product/database-personas.md) for the database roles, jobs-to-be-done, capability mapping and persona-oriented workspace model that should shape the application UX.
+
+See [`docs/architecture/connection-profiles.md`](docs/architecture/connection-profiles.md) for the connection-profile and credential security boundary.
 
 ## Development
 

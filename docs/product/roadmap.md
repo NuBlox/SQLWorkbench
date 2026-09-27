@@ -13,13 +13,16 @@ The application UX and feature prioritisation should be informed by the database
 - [x] MySQL provider backed by NuBloxSQL
 - [x] MySQL catalogue introspection baseline
 - [x] Database persona and jobs-to-be-done model
-- [ ] Persistent connection-profile model
-- [ ] Secure credential-store abstraction
+- [x] Persistent connection-profile model
+- [x] Secure credential-store abstraction
+- [ ] Production OS-backed credential-store implementation
 
 ## M1 — Desktop SQL development
 
 - Electron desktop shell
 - Svelte renderer
+- application-data path integration for connection profiles
+- OS keychain/credential-store adapter
 - persona-aware workspace/navigation model
 - Monaco SQL editor
 - connection selector
