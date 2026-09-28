@@ -2,7 +2,7 @@
 
 NuBlox SQL Workbench is a database engineering environment for SQL development, database exploration, schema engineering, data operations, administration, migration and metadata-driven modelling.
 
-**Current release line: `0.1.0-rc.1` (MySQL-focused release candidate).**
+**Current release line: `0.1.0-rc.2` (MySQL-focused release candidate).**
 
 The product is intentionally separate from the packages it consumes:
 
@@ -65,7 +65,7 @@ The MySQL product path is implemented through M6:
 - table shape/count comparison and guarded table transfer;
 - provider backup-hook discovery with logical Workbench JSON available and external `mysqldump` intentionally unconfigured.
 
-See [`docs/product/roadmap.md`](docs/product/roadmap.md) and [`docs/releases/0.1.0-rc.1.md`](docs/releases/0.1.0-rc.1.md).
+See [`docs/product/roadmap.md`](docs/product/roadmap.md) and [`docs/releases/0.1.0-rc.2.md`](docs/releases/0.1.0-rc.2.md).
 
 ## Development
 
@@ -105,6 +105,6 @@ pnpm --filter @nublox/sql-workbench-desktop package:linux
 pnpm --filter @nublox/sql-workbench-desktop package:win
 ```
 
-The tag-triggered GitHub **Release Candidate** workflow builds macOS ZIP, Linux AppImage and Windows portable artifacts and publishes them to a GitHub prerelease.
+The tag-triggered GitHub **Release Candidate** workflow builds macOS ZIP, Linux AppImage and Windows portable artifacts and publishes them to a GitHub prerelease. Release-branch pull requests run the same three platform packaging targets before merge.
 
 RC binaries are not yet code-signed/notarized. Signing/notarization and installer hardening are post-RC work.
