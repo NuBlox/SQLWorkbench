@@ -22,6 +22,7 @@ export class MySqlWorkbenchProvider extends MySqlDatabaseProvider {
     viewDefinitionEditing: true,
     administration: mysqlAdministrationCapabilities,
     serverAdministration: true,
+    userAdministration: true,
   });
 
   readonly administration: DatabaseAdministrationProvider = new MySqlAdministrationProvider(this);

@@ -1,6 +1,15 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 import type {
+  CompareRequest,
+  DesktopAdministrationOperationsApi,
+  SecurityExecuteRequest,
+  SecurityPreviewRequest,
+  TableExportRequest,
+  TableImportRequest,
+  TransferRequest,
+} from "../lib/administration-operations.js";
+import type {
   AdministrationValueRequest,
   DeleteProfileRequest,
   DesktopApi,
@@ -30,6 +39,7 @@ const IPC = Object.freeze({
   profilesList: "nublox:profiles:list", profilesSave: "nublox:profiles:save", profilesRemove: "nublox:profiles:remove", profilesClearCredential: "nublox:profiles:clear-credential",
   connectionsList: "nublox:connections:list", connectionsConnect: "nublox:connections:connect", connectionsDisconnect: "nublox:connections:disconnect",
   administrationSessions: "nublox:administration:sessions", administrationLocks: "nublox:administration:locks", administrationVariables: "nublox:administration:variables", administrationStatus: "nublox:administration:status",
+  operationsAccounts: "nublox:operations:accounts", operationsRoles: "nublox:operations:roles", operationsPrivileges: "nublox:operations:privileges", operationsSecurityPreview: "nublox:operations:security-preview", operationsSecurityExecute: "nublox:operations:security-execute", operationsStorage: "nublox:operations:storage", operationsExport: "nublox:operations:export", operationsImport: "nublox:operations:import", operationsCompare: "nublox:operations:compare", operationsTransfer: "nublox:operations:transfer", operationsBackupHooks: "nublox:operations:backup-hooks",
   explorerNamespaces: "nublox:explorer:namespaces", explorerRelations: "nublox:explorer:relations", explorerDescribe: "nublox:explorer:describe", explorerRoutines: "nublox:explorer:routines", explorerTriggers: "nublox:explorer:triggers", explorerEvents: "nublox:explorer:events", explorerPrincipals: "nublox:explorer:principals", explorerRoles: "nublox:explorer:roles", explorerPrivileges: "nublox:explorer:privileges", explorerSearch: "nublox:explorer:search",
   queryLanguageCatalog: "nublox:query-language:catalog", schemaLoad: "nublox:schema:load", schemaPreview: "nublox:schema:preview", schemaGraph: "nublox:schema:graph", schemaExecute: "nublox:schema:execute",
   viewLoad: "nublox:views:load", viewPreview: "nublox:views:preview", viewExecute: "nublox:views:execute", erPreview: "nublox:er:preview", erExecute: "nublox:er:execute",
@@ -69,31 +79,30 @@ const api: DesktopApi = Object.freeze({
     search: (request: ExplorerSearchRequest) => ipcRenderer.invoke(IPC.explorerSearch, request),
   }),
   queryLanguage: Object.freeze({ catalog: (connectionId: string) => ipcRenderer.invoke(IPC.queryLanguageCatalog, connectionId) }),
-  schema: Object.freeze({
-    load: (request: SchemaLoadRequest) => ipcRenderer.invoke(IPC.schemaLoad, request),
-    preview: (request: SchemaPreviewRequest) => ipcRenderer.invoke(IPC.schemaPreview, request),
-    graph: (request: SchemaGraphRequest) => ipcRenderer.invoke(IPC.schemaGraph, request),
-    execute: (request: SchemaExecuteRequest) => ipcRenderer.invoke(IPC.schemaExecute, request),
-  }),
-  views: Object.freeze({
-    load: (request: ViewLoadRequest) => ipcRenderer.invoke(IPC.viewLoad, request),
-    preview: (request: ViewPreviewRequest) => ipcRenderer.invoke(IPC.viewPreview, request),
-    execute: (request: ViewExecuteRequest) => ipcRenderer.invoke(IPC.viewExecute, request),
-  }),
+  schema: Object.freeze({ load: (request: SchemaLoadRequest) => ipcRenderer.invoke(IPC.schemaLoad, request), preview: (request: SchemaPreviewRequest) => ipcRenderer.invoke(IPC.schemaPreview, request), graph: (request: SchemaGraphRequest) => ipcRenderer.invoke(IPC.schemaGraph, request), execute: (request: SchemaExecuteRequest) => ipcRenderer.invoke(IPC.schemaExecute, request) }),
+  views: Object.freeze({ load: (request: ViewLoadRequest) => ipcRenderer.invoke(IPC.viewLoad, request), preview: (request: ViewPreviewRequest) => ipcRenderer.invoke(IPC.viewPreview, request), execute: (request: ViewExecuteRequest) => ipcRenderer.invoke(IPC.viewExecute, request) }),
   er: Object.freeze({ preview: (request: ErRelationshipRequest) => ipcRenderer.invoke(IPC.erPreview, request), execute: (request: ErExecuteRequest) => ipcRenderer.invoke(IPC.erExecute, request) }),
-  queries: Object.freeze({
-    execute: (request: ExecuteQueryRequest) => ipcRenderer.invoke(IPC.queriesExecute, request),
-    explain: (request: ExplainQueryRequest) => ipcRenderer.invoke(IPC.queriesExplain, request),
-    cancel: (executionId: string) => ipcRenderer.invoke(IPC.queriesCancel, executionId),
-  }),
+  queries: Object.freeze({ execute: (request: ExecuteQueryRequest) => ipcRenderer.invoke(IPC.queriesExecute, request), explain: (request: ExplainQueryRequest) => ipcRenderer.invoke(IPC.queriesExplain, request), cancel: (executionId: string) => ipcRenderer.invoke(IPC.queriesCancel, executionId) }),
   history: Object.freeze({ list: (limit?: number) => ipcRenderer.invoke(IPC.historyList, limit), clear: () => ipcRenderer.invoke(IPC.historyClear) }),
   planHistory: Object.freeze({ list: (request?: QueryPlanHistoryListRequest) => ipcRenderer.invoke(IPC.planHistoryList, request), clear: () => ipcRenderer.invoke(IPC.planHistoryClear) }),
   statistics: Object.freeze({ forQuery: (request: QueryStatisticsRequest) => ipcRenderer.invoke(IPC.queryStatistics, request) }),
   results: Object.freeze({ export: (request: ExportResultRequest) => ipcRenderer.invoke(IPC.resultsExport, request) }),
-  app: Object.freeze({
-    version: () => ipcRenderer.invoke(IPC.appVersion),
-    rendererReady: () => ipcRenderer.send(IPC.rendererReady),
-  }),
+  app: Object.freeze({ version: () => ipcRenderer.invoke(IPC.appVersion), rendererReady: () => ipcRenderer.send(IPC.rendererReady) }),
+});
+
+const operations: DesktopAdministrationOperationsApi = Object.freeze({
+  accounts: (connectionId: string) => ipcRenderer.invoke(IPC.operationsAccounts, connectionId),
+  roles: (connectionId: string) => ipcRenderer.invoke(IPC.operationsRoles, connectionId),
+  privileges: (connectionId: string, grantee?: string) => ipcRenderer.invoke(IPC.operationsPrivileges, connectionId, grantee),
+  previewSecurity: (request: SecurityPreviewRequest) => ipcRenderer.invoke(IPC.operationsSecurityPreview, request),
+  executeSecurity: (request: SecurityExecuteRequest) => ipcRenderer.invoke(IPC.operationsSecurityExecute, request),
+  storage: (connectionId: string) => ipcRenderer.invoke(IPC.operationsStorage, connectionId),
+  exportTable: (request: TableExportRequest) => ipcRenderer.invoke(IPC.operationsExport, request),
+  importTable: (request: TableImportRequest) => ipcRenderer.invoke(IPC.operationsImport, request),
+  compare: (request: CompareRequest) => ipcRenderer.invoke(IPC.operationsCompare, request),
+  transfer: (request: TransferRequest) => ipcRenderer.invoke(IPC.operationsTransfer, request),
+  backupHooks: (connectionId: string) => ipcRenderer.invoke(IPC.operationsBackupHooks, connectionId),
 });
 
 contextBridge.exposeInMainWorld("nublox", api);
+contextBridge.exposeInMainWorld("nubloxOperations", operations);

@@ -1,0 +1,72 @@
+name: Release Candidate
+
+on:
+  push:
+    tags:
+      - "v*-rc.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            command: package:mac
+            artifact: macos
+          - os: ubuntu-latest
+            command: package:linux
+            artifact: linux
+          - os: windows-latest
+            command: package:win
+            artifact: windows
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Validate repository
+        run: pnpm check
+
+      - name: Package desktop application
+        run: pnpm --filter @nublox/sql-workbench-desktop ${{ matrix.command }}
+
+      - name: Upload packaged artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nublox-sql-workbench-${{ matrix.artifact }}
+          path: apps/desktop/release/*
+          if-no-files-found: error
+
+  prerelease:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Publish GitHub prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          generate_release_notes: true
+          files: artifacts/*

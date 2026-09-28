@@ -1,7 +1,9 @@
 {
   "name": "@nublox/sql-workbench-desktop",
-  "version": "0.1.0",
+  "version": "0.1.0-rc.1",
   "private": true,
+  "description": "NuBlox SQL Workbench desktop database engineering environment",
+  "author": "NuBlox",
   "type": "module",
   "main": "./dist/electron/main/main.js",
   "scripts": {
@@ -10,7 +12,11 @@
     "dev": "vite dev --host 127.0.0.1 --port 5173",
     "start": "pnpm build && electron .",
     "start:built": "electron .",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "package:dir": "pnpm build && pnpm dlx electron-builder@26.15.3 --dir --publish never",
+    "package:mac": "pnpm build && pnpm dlx electron-builder@26.15.3 --mac zip --publish never",
+    "package:linux": "pnpm build && pnpm dlx electron-builder@26.15.3 --linux AppImage --publish never",
+    "package:win": "pnpm build && pnpm dlx electron-builder@26.15.3 --win portable --publish never"
   },
   "dependencies": {
     "@nublox/workbench-catalog": "workspace:*",
@@ -32,5 +38,30 @@
     "svelte-check": "4.7.6",
     "typescript": "^5.8.3",
     "vite": "8.3.1"
+  },
+  "build": {
+    "appId": "com.nublox.sqlworkbench",
+    "productName": "NuBlox SQL Workbench",
+    "artifactName": "NuBlox-SQL-Workbench-${version}-${os}-${arch}.${ext}",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "build/renderer/**/*",
+      "dist/electron/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": ["zip"]
+    },
+    "linux": {
+      "category": "Development",
+      "target": ["AppImage"]
+    },
+    "win": {
+      "target": ["portable"]
+    }
   }
 }

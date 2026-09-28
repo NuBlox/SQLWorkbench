@@ -2,10 +2,12 @@
 
 NuBlox SQL Workbench is a database engineering environment for SQL development, database exploration, schema engineering, data operations, administration, migration and metadata-driven modelling.
 
+**Current release line: `0.1.0-rc.1` (MySQL-focused release candidate).**
+
 The product is intentionally separate from the packages it consumes:
 
-- [`NuBlox/NuBloxSQL`](https://github.com/NuBlox/NuBloxSQL) supplies the first database driver implementation through `@nublox/mysql`.
-- [`NuBlox/metaobject`](https://github.com/NuBlox/metaobject) supplies the metadata-driven object/runtime model used by Workbench modelling and schema-evolution capabilities.
+- [`NuBlox/NuBloxSQL`](https://github.com/NuBlox/NuBloxSQL) supplies the MySQL driver through published `@nublox/mysql@3.1.0-rc.1`.
+- [`NuBlox/metaobject`](https://github.com/NuBlox/metaobject) supplies the metadata-driven object/runtime model through published `@nublox/metaobject@1.0.0-rc.1`.
 - `NuBlox/SQLWorkbench` owns desktop UX, database-provider orchestration, normalized catalogues, SQL execution workflows, modelling and administration.
 
 ## Architecture
@@ -13,7 +15,7 @@ The product is intentionally separate from the packages it consumes:
 ```text
 Electron / Svelte Workbench UI
               |
-        typed preload API
+        typed preload APIs
               |
               v
        Workbench Core
@@ -44,43 +46,26 @@ MySQL Provider      Future Providers
 
 The provider boundary is capability-driven. Workbench core code must not contain MySQL-specific branching.
 
-## Implemented product foundation
+## Release-candidate capability
 
-- Electron desktop shell with context isolation, renderer sandboxing and a typed preload bridge;
-- Svelte 5 / SvelteKit desktop renderer;
-- normalized database catalogue package;
-- database-provider contract;
-- provider registry, connection manager and query service;
-- persistent, revisioned connection-profile repository;
-- OS-backed credential encryption that keeps passwords and TLS private keys outside profile persistence;
-- first MySQL provider backed by published `@nublox/mysql@3.1.0-rc.1`;
-- published `@nublox/metaobject@1.0.0-rc.1` integration through the Workbench metaobject bridge;
-- connection health verification and live connection lifecycle;
-- Monaco SQL editor;
-- current-statement, selection and sequential script execution;
-- live query cancellation;
-- multiple result sets and tabular result rendering;
-- persistent bounded query history;
-- CSV and JSON result export;
-- MySQL `EXPLAIN FORMAT=JSON` support in the provider layer;
-- INFORMATION_SCHEMA introspection for databases, tables/views, columns, indexes and foreign keys;
-- M3 logical/physical metadata bridge and M4 schema engineering;
-- provider-aware query-language service with MySQL syntax parsing;
-- positioned Monaco parser diagnostics;
-- grammar-aware SQL keyword completion;
-- live catalogue completion for tables, views and columns;
-- automatic IntelliSense metadata refresh after schema-changing SQL;
-- CI build, Svelte diagnostics and unit tests.
+The MySQL product path is implemented through M6:
 
-See [`docs/product/roadmap.md`](docs/product/roadmap.md) for the delivery sequence.
+- secure Electron/Svelte desktop shell with custom local protocol, CSP and startup diagnostics;
+- persistent connection profiles and OS-backed credential encryption;
+- Monaco SQL editor, statement/selection/script execution, cancellation, result grids, history and CSV/JSON export;
+- lazy database explorer for schemas, relations, columns, indexes, foreign keys, routines, triggers/events and security metadata;
+- reverse engineering into `@nublox/metaobject`, logical/physical comparison and provider migration handoff;
+- table, view and interactive ER schema engineering with DDL preview and stale-preview guarded live execution;
+- dialect-aware parser services, live-catalogue completion, syntax/semantic diagnostics, formatting and visual query building;
+- explain-plan visualization, plan history and query statistics;
+- sessions/processes, lock/blocking diagnostics, server variables/status;
+- users/roles/privileges inspection and guarded GRANT/REVOKE operations;
+- storage/capacity inspection;
+- native-dialog Workbench JSON table import/export;
+- table shape/count comparison and guarded table transfer;
+- provider backup-hook discovery with logical Workbench JSON available and external `mysqldump` intentionally unconfigured.
 
-See [`docs/product/database-personas.md`](docs/product/database-personas.md) for the database roles, jobs-to-be-done, capability mapping and persona-oriented workspace model that shapes the application UX.
-
-See [`docs/architecture/connection-profiles.md`](docs/architecture/connection-profiles.md) for the connection-profile and credential security boundary.
-
-See [`docs/architecture/query-execution.md`](docs/architecture/query-execution.md) for the editor, execution, cancellation, history and export boundary.
-
-See [`docs/architecture/query-language-intelligence.md`](docs/architecture/query-language-intelligence.md) for the M5 parser, diagnostics and live-catalogue completion architecture.
+See [`docs/product/roadmap.md`](docs/product/roadmap.md) and [`docs/releases/0.1.0-rc.1.md`](docs/releases/0.1.0-rc.1.md).
 
 ## Development
 
@@ -98,8 +83,28 @@ pnpm check
 Build and launch the desktop application:
 
 ```bash
-pnpm --filter @nublox/sql-workbench-desktop build
 pnpm --filter @nublox/sql-workbench-desktop start
 ```
 
-The MySQL provider consumes the published NuBloxSQL package, while the metaobject bridge consumes the published Metaobject package. SQL Workbench keeps both package boundaries explicit so each repository can evolve independently.
+Build an unpacked desktop package for verification:
+
+```bash
+pnpm --filter @nublox/sql-workbench-desktop package:dir
+```
+
+Build the current-platform RC artifact manually:
+
+```bash
+# macOS
+pnpm --filter @nublox/sql-workbench-desktop package:mac
+
+# Linux
+pnpm --filter @nublox/sql-workbench-desktop package:linux
+
+# Windows
+pnpm --filter @nublox/sql-workbench-desktop package:win
+```
+
+The tag-triggered GitHub **Release Candidate** workflow builds macOS ZIP, Linux AppImage and Windows portable artifacts and publishes them to a GitHub prerelease.
+
+RC binaries are not yet code-signed/notarized. Signing/notarization and installer hardening are post-RC work.
