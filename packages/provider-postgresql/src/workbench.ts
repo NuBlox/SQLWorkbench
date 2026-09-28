@@ -16,7 +16,9 @@ import type {
   DatabaseCapabilities,
   DatabaseConnectionConfig,
   DatabaseExplorerProvider,
+  DatabaseMigrationProvider,
   DatabaseSession,
+  DatabaseViewProvider,
   ExplorerNamespaceOptions,
   ExplorerObjectReference,
   ExplorerSearchRequest,
@@ -53,6 +55,8 @@ import {
   createPostgreSqlControlPool,
   executePostgreSqlRequest,
 } from "./execution.js";
+import { PostgreSqlMigrationProvider } from "./migration.js";
+import { PostgreSqlViewEngineeringProvider } from "./view-engineering.js";
 
 export const postgresqlCapabilities: DatabaseCapabilities = Object.freeze({
   ...foundationPostgresqlCapabilities,
@@ -62,11 +66,15 @@ export const postgresqlCapabilities: DatabaseCapabilities = Object.freeze({
   queryCancellation: true,
   objectSearch: true,
   privilegeIntrospection: true,
+  migrationPreview: true,
+  viewDefinitionEditing: true,
 });
 
 export class PostgreSqlDatabaseProvider extends FoundationPostgreSqlDatabaseProvider {
   override readonly capabilities = postgresqlCapabilities;
   override readonly explorer: DatabaseExplorerProvider;
+  override readonly migrations: DatabaseMigrationProvider;
+  override readonly viewEngineering: DatabaseViewProvider;
   private readonly controlPools = new WeakMap<DatabaseSession, Pool>();
 
   constructor() {
@@ -76,6 +84,8 @@ export class PostgreSqlDatabaseProvider extends FoundationPostgreSqlDatabaseProv
       throw new Error("PostgreSQL foundation explorer is unavailable.");
     }
     this.explorer = new PostgreSqlCatalogSecurityExplorer(foundationExplorer);
+    this.migrations = new PostgreSqlMigrationProvider();
+    this.viewEngineering = new PostgreSqlViewEngineeringProvider(this);
   }
 
   override async connect(config: DatabaseConnectionConfig): Promise<DatabaseSession> {
