@@ -1,6 +1,6 @@
 {
   "name": "@nublox/sql-workbench-desktop",
-  "version": "0.1.0",
+  "version": "0.2.0-rc.1",
   "private": true,
   "type": "module",
   "main": "./dist/electron/main/main.js",
@@ -10,7 +10,9 @@
     "dev": "vite dev --host 127.0.0.1 --port 5173",
     "start": "pnpm build && electron .",
     "start:built": "electron .",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "package": "pnpm build && electron-builder --publish never",
+    "package:dir": "pnpm build && electron-builder --dir --publish never"
   },
   "dependencies": {
     "@nublox/workbench-catalog": "workspace:*",
@@ -27,10 +29,39 @@
     "@sveltejs/vite-plugin-svelte": "7.3.1",
     "@types/node": "^22.18.6",
     "electron": "44.4.5",
+    "electron-builder": "26.17.0",
     "monaco-editor": "0.57.0",
     "svelte": "5.57.1",
     "svelte-check": "4.7.6",
     "typescript": "^5.8.3",
     "vite": "8.3.1"
+  },
+  "build": {
+    "appId": "com.nublox.sqlworkbench",
+    "productName": "NuBlox SQL Workbench",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "build/renderer/**/*",
+      "dist/electron/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": ["dmg", "zip"]
+    },
+    "win": {
+      "target": ["nsis", "zip"]
+    },
+    "linux": {
+      "category": "Development",
+      "target": ["AppImage", "deb", "tar.gz"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }
