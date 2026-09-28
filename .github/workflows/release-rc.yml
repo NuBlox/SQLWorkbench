@@ -75,6 +75,7 @@ jobs:
           retention-days: 30
 
   prerelease:
+    if: startsWith(github.ref_name, 'release/v')
     needs: package
     runs-on: ubuntu-latest
     steps:
