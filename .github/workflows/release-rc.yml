@@ -60,8 +60,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
+      - name: Build workspace
+        run: pnpm build
+
       - name: Package desktop
-        run: pnpm --filter @nublox/sql-workbench-desktop package
+        run: pnpm --filter @nublox/sql-workbench-desktop package:built
 
       - name: Upload package artifacts
         uses: actions/upload-artifact@v4
