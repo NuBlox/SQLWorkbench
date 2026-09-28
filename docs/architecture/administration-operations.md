@@ -4,13 +4,14 @@ NuBlox SQL Workbench exposes database administration through provider-neutral co
 
 ## Capability model
 
-`DatabaseCapabilities.administration` advertises fine-grained operational support. The first MySQL slice enables:
+`DatabaseCapabilities.administration` advertises fine-grained operational support. The current MySQL slice enables:
 
 - server session/process inspection;
+- live lock-wait and blocking inspection;
 - global server-variable inspection;
 - global server-status inspection.
 
-Lock inspection, user administration, storage/capacity, import/export, backup/restore and data transfer remain explicit unsupported capabilities until their provider implementations land.
+User administration, storage/capacity, import/export, backup/restore and data transfer remain explicit unsupported capabilities until their provider implementations land.
 
 ## Execution boundary
 
@@ -20,14 +21,19 @@ The MySQL implementation delegates SQL execution back through `MySqlDatabaseProv
 
 ## MySQL data sources
 
-The baseline uses:
+The administration workspace uses:
 
 - `INFORMATION_SCHEMA.PROCESSLIST` for visible sessions/processes;
+- `performance_schema.data_lock_waits` for wait-for relationships;
+- `performance_schema.data_locks` for requested lock object/type/mode metadata;
+- `performance_schema.threads` and `events_statements_current` for waiting/blocking process identities and visible waiting SQL;
 - `SHOW GLOBAL VARIABLES` for server configuration;
 - `SHOW GLOBAL STATUS` for runtime counters/status.
 
-MySQL visibility and privilege rules apply. Users without broad process privileges may see only their own sessions. This is intentional: SQL Workbench does not bypass database authorization.
+Lock and transaction metadata is inherently a point-in-time operational snapshot. Rows can disappear or change while the administration screen is being refreshed, so the UI presents each refresh as observation data rather than durable state.
+
+MySQL visibility and privilege rules apply. Users without broad process/performance-schema privileges may see only a subset of sessions or lock metadata. This is intentional: SQL Workbench does not bypass database authorization.
 
 ## Safety
 
-This slice is read-only. It does not terminate sessions, mutate global variables, grant privileges or execute backup/restore commands. Future mutating administration operations must use explicit capability checks and guarded confirmation flows comparable to schema engineering.
+This slice is read-only. It does not terminate sessions, kill blocking statements, mutate global variables, grant privileges or execute backup/restore commands. Future mutating administration operations must use explicit capability checks and guarded confirmation flows comparable to schema engineering.

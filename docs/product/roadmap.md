@@ -84,7 +84,7 @@ The application UX and feature prioritisation should be informed by the database
 ## M6 — Administration and operations
 
 - [x] sessions/processes
-- [ ] locks and blocking
+- [x] locks and blocking
 - [x] server variables/status
 - [ ] users, roles and fine-grained privileges
 - [ ] storage/capacity inspection

@@ -6,6 +6,17 @@ import { DesktopAdministrationService } from "../dist/electron/main/administrati
 
 function provider(withAdministration = true) {
   const session = { id: "server", providerId: "test", connectedAt: new Date(0).toISOString(), health: async () => ({ ok: true }), close: async () => {} };
+  const administrationCapabilities = {
+    sessions: true,
+    locks: true,
+    serverVariables: true,
+    serverStatus: true,
+    users: false,
+    storage: false,
+    importExport: false,
+    backupRestore: false,
+    dataTransfer: false,
+  };
   return {
     id: "test",
     displayName: "Test",
@@ -14,13 +25,14 @@ function provider(withAdministration = true) {
       procedures: false, functions: false, triggers: false, partitions: false, transactions: true,
       savepoints: true, explainPlan: false, queryCancellation: false, serverAdministration: withAdministration,
       userAdministration: false,
-      ...(withAdministration ? { administration: { sessions: true, locks: false, serverVariables: true, serverStatus: true, users: false, storage: false, importExport: false, backupRestore: false, dataTransfer: false } } : {}),
+      ...(withAdministration ? { administration: administrationCapabilities } : {}),
     },
     ...(withAdministration ? {
       administration: {
         providerId: "test",
-        capabilities: { sessions: true, locks: false, serverVariables: true, serverStatus: true, users: false, storage: false, importExport: false, backupRestore: false, dataTransfer: false },
+        capabilities: administrationCapabilities,
         async listSessions() { return [{ id: "7", user: "app", command: "Query", timeSeconds: 1 }]; },
+        async listLockWaits() { return [{ waitingSessionId: "8", blockingSessionId: "7", object: "nublox.orders", lockType: "RECORD", lockMode: "X" }]; },
         async listServerVariables(_session, filter) { return [{ name: "filter", value: filter ?? "" }]; },
         async listServerStatus(_session, filter) { return [{ name: "status", value: filter ?? "" }]; },
       },
@@ -41,10 +53,11 @@ async function connected(withAdministration = true) {
   return connections;
 }
 
-test("desktop administration service forwards sessions, variables and status", async () => {
+test("desktop administration service forwards sessions, locks, variables and status", async () => {
   const connections = await connected();
   const service = new DesktopAdministrationService(connections);
   assert.equal((await service.listSessions("dev"))[0].id, "7");
+  assert.deepEqual(await service.listLockWaits("dev"), [{ waitingSessionId: "8", blockingSessionId: "7", object: "nublox.orders", lockType: "RECORD", lockMode: "X" }]);
   assert.deepEqual(await service.listVariables("dev", " max "), [{ name: "filter", value: "max" }]);
   assert.deepEqual(await service.listStatus("dev", " thread "), [{ name: "status", value: "thread" }]);
   await connections.disconnectAll();

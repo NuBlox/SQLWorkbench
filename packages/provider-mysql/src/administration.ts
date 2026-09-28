@@ -1,6 +1,7 @@
 import type {
   DatabaseAdministrationCapabilities,
   DatabaseAdministrationProvider,
+  DatabaseLockWait,
   DatabaseServerSession,
   DatabaseServerStatus,
   DatabaseServerVariable,
@@ -22,9 +23,32 @@ const PROCESSLIST_SQL = `SELECT
 FROM INFORMATION_SCHEMA.PROCESSLIST
 ORDER BY TIME DESC, ID ASC`;
 
+const LOCK_WAITS_SQL = `SELECT
+  waiting_thread.PROCESSLIST_ID AS waitingSessionId,
+  blocking_thread.PROCESSLIST_ID AS blockingSessionId,
+  CONCAT_WS('.', requested.OBJECT_SCHEMA, requested.OBJECT_NAME) AS objectName,
+  requested.LOCK_TYPE AS lockType,
+  requested.LOCK_MODE AS lockMode,
+  TIMESTAMPDIFF(SECOND, waiting_trx.TRX_WAIT_STARTED, CURRENT_TIMESTAMP()) AS waitSeconds,
+  COALESCE(waiting_statement.SQL_TEXT, waiting_trx.TRX_QUERY) AS statementText
+FROM performance_schema.data_lock_waits AS waits
+JOIN performance_schema.data_locks AS requested
+  ON requested.ENGINE = waits.ENGINE
+ AND requested.ENGINE_LOCK_ID = waits.REQUESTING_ENGINE_LOCK_ID
+JOIN performance_schema.threads AS waiting_thread
+  ON waiting_thread.THREAD_ID = waits.REQUESTING_THREAD_ID
+LEFT JOIN performance_schema.threads AS blocking_thread
+  ON blocking_thread.THREAD_ID = waits.BLOCKING_THREAD_ID
+LEFT JOIN INFORMATION_SCHEMA.INNODB_TRX AS waiting_trx
+  ON waiting_trx.TRX_MYSQL_THREAD_ID = waiting_thread.PROCESSLIST_ID
+LEFT JOIN performance_schema.events_statements_current AS waiting_statement
+  ON waiting_statement.THREAD_ID = waits.REQUESTING_THREAD_ID
+WHERE waiting_thread.PROCESSLIST_ID IS NOT NULL
+ORDER BY waitSeconds DESC, waiting_thread.PROCESSLIST_ID, blocking_thread.PROCESSLIST_ID`;
+
 export const mysqlAdministrationCapabilities: DatabaseAdministrationCapabilities = Object.freeze({
   sessions: true,
-  locks: false,
+  locks: true,
   serverVariables: true,
   serverStatus: true,
   users: false,
@@ -50,6 +74,19 @@ export class MySqlAdministrationProvider implements DatabaseAdministrationProvid
       command: stringValue(row.commandName),
       timeSeconds: finiteNumber(row.timeSeconds),
       ...(optionalString(row.stateName) ? { state: optionalString(row.stateName)! } : {}),
+      ...(optionalString(row.statementText) ? { statement: optionalString(row.statementText)! } : {}),
+    }));
+  }
+
+  async listLockWaits(session: DatabaseSession): Promise<readonly DatabaseLockWait[]> {
+    const rows = await this.#rows(session, LOCK_WAITS_SQL);
+    return rows.map((row) => ({
+      waitingSessionId: stringValue(row.waitingSessionId),
+      ...(optionalString(row.blockingSessionId) ? { blockingSessionId: optionalString(row.blockingSessionId)! } : {}),
+      ...(optionalString(row.objectName) ? { object: optionalString(row.objectName)! } : {}),
+      ...(optionalString(row.lockType) ? { lockType: optionalString(row.lockType)! } : {}),
+      ...(optionalString(row.lockMode) ? { lockMode: optionalString(row.lockMode)! } : {}),
+      ...(optionalFiniteNumber(row.waitSeconds) !== undefined ? { waitSeconds: optionalFiniteNumber(row.waitSeconds)! } : {}),
       ...(optionalString(row.statementText) ? { statement: optionalString(row.statementText)! } : {}),
     }));
   }
@@ -95,4 +132,10 @@ function stringValue(value: unknown): string {
 function finiteNumber(value: unknown): number {
   const result = typeof value === "number" ? value : Number(value);
   return Number.isFinite(result) ? result : 0;
+}
+
+function optionalFiniteNumber(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === "") return undefined;
+  const result = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(result) ? result : undefined;
 }

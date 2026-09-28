@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { MySqlAdministrationProvider } from "../dist/administration.js";
+import { MySqlAdministrationProvider, mysqlAdministrationCapabilities } from "../dist/administration.js";
 
 const session = { id: "session", providerId: "mysql", connectedAt: new Date(0).toISOString(), health: async () => ({ ok: true }), close: async () => {} };
 
@@ -13,6 +13,10 @@ function execution(rows) {
     resultSets: [{ columns: [], rows }],
   };
 }
+
+test("MySQL administration provider advertises lock inspection", () => {
+  assert.equal(mysqlAdministrationCapabilities.locks, true);
+});
 
 test("MySQL administration provider maps processlist rows", async () => {
   const provider = new MySqlAdministrationProvider({
@@ -40,6 +44,37 @@ test("MySQL administration provider maps processlist rows", async () => {
   assert.equal(sessions[1].id, "43");
   assert.equal(sessions[1].timeSeconds, 2);
   assert.equal(sessions[1].database, undefined);
+});
+
+test("MySQL administration provider maps blocking lock waits", async () => {
+  const provider = new MySqlAdministrationProvider({
+    async execute(_session, request) {
+      assert.match(request.sql, /performance_schema\.data_lock_waits/u);
+      assert.match(request.sql, /performance_schema\.data_locks/u);
+      assert.match(request.sql, /INFORMATION_SCHEMA\.INNODB_TRX/u);
+      return execution([
+        {
+          waitingSessionId: 51,
+          blockingSessionId: 42,
+          objectName: "nublox.orders",
+          lockType: "RECORD",
+          lockMode: "X,REC_NOT_GAP",
+          waitSeconds: "12",
+          statementText: "UPDATE orders SET status='paid' WHERE id=7",
+        },
+      ]);
+    },
+  });
+
+  assert.deepEqual(await provider.listLockWaits(session), [{
+    waitingSessionId: "51",
+    blockingSessionId: "42",
+    object: "nublox.orders",
+    lockType: "RECORD",
+    lockMode: "X,REC_NOT_GAP",
+    waitSeconds: 12,
+    statement: "UPDATE orders SET status='paid' WHERE id=7",
+  }]);
 });
 
 test("MySQL administration provider maps and filters global variables/status", async () => {

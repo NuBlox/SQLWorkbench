@@ -29,7 +29,7 @@ import type {
 const IPC = Object.freeze({
   profilesList: "nublox:profiles:list", profilesSave: "nublox:profiles:save", profilesRemove: "nublox:profiles:remove", profilesClearCredential: "nublox:profiles:clear-credential",
   connectionsList: "nublox:connections:list", connectionsConnect: "nublox:connections:connect", connectionsDisconnect: "nublox:connections:disconnect",
-  administrationSessions: "nublox:administration:sessions", administrationVariables: "nublox:administration:variables", administrationStatus: "nublox:administration:status",
+  administrationSessions: "nublox:administration:sessions", administrationLocks: "nublox:administration:locks", administrationVariables: "nublox:administration:variables", administrationStatus: "nublox:administration:status",
   explorerNamespaces: "nublox:explorer:namespaces", explorerRelations: "nublox:explorer:relations", explorerDescribe: "nublox:explorer:describe", explorerRoutines: "nublox:explorer:routines", explorerTriggers: "nublox:explorer:triggers", explorerEvents: "nublox:explorer:events", explorerPrincipals: "nublox:explorer:principals", explorerRoles: "nublox:explorer:roles", explorerPrivileges: "nublox:explorer:privileges", explorerSearch: "nublox:explorer:search",
   queryLanguageCatalog: "nublox:query-language:catalog", schemaLoad: "nublox:schema:load", schemaPreview: "nublox:schema:preview", schemaGraph: "nublox:schema:graph", schemaExecute: "nublox:schema:execute",
   viewLoad: "nublox:views:load", viewPreview: "nublox:views:preview", viewExecute: "nublox:views:execute", erPreview: "nublox:er:preview", erExecute: "nublox:er:execute",
@@ -52,6 +52,7 @@ const api: DesktopApi = Object.freeze({
   }),
   administration: Object.freeze({
     sessions: (connectionId: string) => ipcRenderer.invoke(IPC.administrationSessions, connectionId),
+    locks: (connectionId: string) => ipcRenderer.invoke(IPC.administrationLocks, connectionId),
     variables: (request: AdministrationValueRequest) => ipcRenderer.invoke(IPC.administrationVariables, request),
     status: (request: AdministrationValueRequest) => ipcRenderer.invoke(IPC.administrationStatus, request),
   }),
