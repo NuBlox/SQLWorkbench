@@ -21,14 +21,14 @@ test("renderer bootstrap accepts built renderer and preload assets", async () =>
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 
-test("renderer bootstrap reports missing build artifacts", async () => {
+test("renderer bootstrap reports missing build artifacts without relying on async check order", async () => {
   const directory = await mkdtemp(join(tmpdir(), "nublox-renderer-bootstrap-"));
   try {
     const check = await verifyRendererBootstrap({ rendererHtml: join(directory, "missing-index.html"), preloadScript: join(directory, "missing-preload.cjs") });
     assert.equal(check.ok, false);
     assert.equal(check.errors.length, 2);
-    assert.match(check.errors[0] ?? "", /Missing renderer HTML/u);
-    assert.match(check.errors[1] ?? "", /Missing preload script/u);
+    assert.ok(check.errors.some((error) => /Missing renderer HTML/u.test(error)), `Expected renderer HTML diagnostic, got: ${check.errors.join(" | ")}`);
+    assert.ok(check.errors.some((error) => /Missing preload script/u.test(error)), `Expected preload diagnostic, got: ${check.errors.join(" | ")}`);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 
