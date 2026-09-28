@@ -9,7 +9,7 @@ import type {
   ExplorerRelationRequest, ExplorerRoleGrant, ExplorerRoutine, ExplorerSearchRequest, ExplorerSearchResult, ExplorerTrigger,
 } from "@nublox/workbench-core";
 import type {
-  DatabaseMigrationPreview, DatabaseReferentialAction, DatabaseSchemaChangePlan, DatabaseServerSession,
+  DatabaseLockWait, DatabaseMigrationPreview, DatabaseReferentialAction, DatabaseSchemaChangePlan, DatabaseServerSession,
   DatabaseServerStatus, DatabaseServerVariable, DatabaseViewChangePlan, DatabaseViewDefinition,
 } from "@nublox/workbench-provider-api";
 import type { QueryCompletionCatalog } from "@nublox/workbench-query-engineering";
@@ -22,7 +22,7 @@ export type {
   ExplorerRoutine, ExplorerSearchRequest, ExplorerSearchResult, ExplorerTrigger,
 } from "@nublox/workbench-core";
 export type {
-  DatabaseMigrationPreview, DatabaseReferentialAction, DatabaseSchemaChangePlan, DatabaseServerSession, DatabaseServerStatus,
+  DatabaseLockWait, DatabaseMigrationPreview, DatabaseReferentialAction, DatabaseSchemaChangePlan, DatabaseServerSession, DatabaseServerStatus,
   DatabaseServerVariable, DatabaseViewAlgorithm, DatabaseViewChangePlan, DatabaseViewCheckOption, DatabaseViewDefinition,
   DatabaseViewSecurityType,
 } from "@nublox/workbench-provider-api";
@@ -88,6 +88,7 @@ export interface DesktopApi {
   readonly connections: { list(): Promise<readonly OpenConnectionInfo[]>; connect(profileId: string): Promise<OpenConnectionInfo>; disconnect(profileId: string): Promise<void>; };
   readonly administration: {
     sessions(connectionId: string): Promise<readonly DatabaseServerSession[]>;
+    locks(connectionId: string): Promise<readonly DatabaseLockWait[]>;
     variables(request: AdministrationValueRequest): Promise<readonly DatabaseServerVariable[]>;
     status(request: AdministrationValueRequest): Promise<readonly DatabaseServerStatus[]>;
   };
