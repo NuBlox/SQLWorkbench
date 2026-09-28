@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import AdministrationOperations from "$lib/AdministrationOperations.svelte";
   import type {
     DatabaseLockWait,
     DatabaseServerSession,
@@ -8,7 +9,7 @@
     OpenConnectionInfo,
   } from "$lib/desktop-api";
 
-  type Tab = "sessions" | "locks" | "variables" | "status";
+  type Tab = "sessions" | "locks" | "variables" | "status" | "operations";
 
   let connections: readonly OpenConnectionInfo[] = [];
   let connectionId = "";
@@ -39,7 +40,7 @@
     try {
       connections = await window.nublox.connections.list();
       if (!connections.some((item) => item.id === connectionId)) connectionId = connections[0]?.id ?? "";
-      if (connectionId) await refresh();
+      if (connectionId && tab !== "operations") await refresh();
     } catch (error) {
       setError(error);
     }
@@ -50,17 +51,17 @@
     lockWaits = [];
     variables = [];
     status = [];
-    if (connectionId) await refresh();
+    if (connectionId && tab !== "operations") await refresh();
   }
 
   async function changeTab(next: Tab): Promise<void> {
     tab = next;
     filter = "";
-    await refresh();
+    if (next !== "operations") await refresh();
   }
 
   async function refresh(): Promise<void> {
-    if (!connectionId) return;
+    if (!connectionId || tab === "operations") return;
     loading = true;
     errorMessage = "";
     try {
@@ -77,13 +78,14 @@
   }
 
   async function applyFilter(): Promise<void> {
-    if (tab === "sessions" || tab === "locks") return;
+    if (tab === "sessions" || tab === "locks" || tab === "operations") return;
     await refresh();
   }
 
   function filterPlaceholder(): string {
     if (tab === "sessions") return "user, database, state or SQL";
     if (tab === "locks") return "waiting/blocking session, object, lock mode or SQL";
+    if (tab === "operations") return "Operations use their own scoped controls";
     return "name or value";
   }
 
@@ -111,10 +113,10 @@
     </label>
     <label class="filter">
       <span>Filter</span>
-      <input bind:value={filter} placeholder={filterPlaceholder()} onkeydown={(event) => { if (event.key === "Enter") void applyFilter(); }} />
+      <input bind:value={filter} disabled={tab === "operations"} placeholder={filterPlaceholder()} onkeydown={(event) => { if (event.key === "Enter") void applyFilter(); }} />
     </label>
     <button class="secondary" type="button" onclick={() => void refreshConnections()} disabled={loading}>Connections</button>
-    <button class="primary" type="button" onclick={() => void refresh()} disabled={loading || !connectionId}>{loading ? "Refreshing…" : "Refresh"}</button>
+    <button class="primary" type="button" onclick={() => void refresh()} disabled={loading || !connectionId || tab === "operations"}>{loading ? "Refreshing…" : "Refresh"}</button>
   </div>
 
   {#if connections.length === 0}
@@ -136,11 +138,14 @@
         <button class:active={tab === "locks"} type="button" onclick={() => void changeTab("locks")}>Locks / Blocking</button>
         <button class:active={tab === "variables"} type="button" onclick={() => void changeTab("variables")}>Server Variables</button>
         <button class:active={tab === "status"} type="button" onclick={() => void changeTab("status")}>Server Status</button>
+        <button class:active={tab === "operations"} type="button" onclick={() => void changeTab("operations")}>Security / Storage / Data</button>
       </div>
 
       {#if errorMessage}<div class="error">{errorMessage}</div>{/if}
 
-      {#if tab === "sessions"}
+      {#if tab === "operations"}
+        <AdministrationOperations {connectionId} {connections} />
+      {:else if tab === "sessions"}
         <div class="table-wrap">
           <table>
             <thead><tr><th>ID</th><th>User</th><th>Host</th><th>Database</th><th>Command</th><th>Seconds</th><th>State</th><th>Statement</th></tr></thead>
@@ -198,5 +203,5 @@
 </section>
 
 <style>
-  .admin-shell{padding:16px 22px 24px;display:grid;gap:14px;min-height:0}.toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.toolbar label{display:grid;gap:5px;min-width:220px}.toolbar label.filter{flex:1;min-width:260px}.toolbar span{color:#748aa4;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.toolbar input,.toolbar select{height:36px;border:1px solid #263b54;border-radius:7px;padding:0 10px;background:#0c1929;color:#dce8f6;outline:none}.toolbar input:focus,.toolbar select:focus{border-color:#467fc8}.toolbar button{height:36px;border-radius:7px;padding:0 13px;cursor:pointer}.primary{border:1px solid #3d81de;background:#3478d4;color:#fff}.secondary{border:1px solid #2a4059;background:#101f31;color:#9fb2c9}.toolbar button:disabled{opacity:.5;cursor:default}.summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.summary-grid article{border:1px solid #1e3044;border-radius:9px;padding:13px 14px;background:#0c1827}.summary-grid article.attention{border-color:#76424a;background:#1b151e}.summary-grid span,.summary-grid small{display:block;color:#71869f;font-size:10px}.summary-grid article.attention span,.summary-grid article.attention small{color:#c68992}.summary-grid strong{display:block;margin:4px 0;color:#f1f6fc;font-size:23px}.summary-grid .time-value{font-size:17px;line-height:28px}.panel{min-height:420px;border:1px solid #1e3044;border-radius:10px;overflow:hidden;background:#0b1726}.tabs{display:flex;gap:4px;padding:9px 10px;border-bottom:1px solid #1e3044;background:#0e1b2b}.tabs button{border:0;border-radius:6px;padding:8px 11px;background:transparent;color:#8297af;cursor:pointer}.tabs button.active{background:#182b42;color:#e5eef9}.error{margin:12px;border:1px solid #6b3240;border-radius:7px;padding:10px 12px;background:#2a151d;color:#ef9ead;font-size:12px}.table-wrap{overflow:auto;max-height:560px}table{width:100%;border-collapse:collapse;font-size:11px}th{position:sticky;top:0;z-index:1;padding:9px 10px;border-bottom:1px solid #24364b;background:#101d2e;color:#7188a3;text-align:left;font-size:9px;letter-spacing:.08em;text-transform:uppercase}td{padding:9px 10px;border-bottom:1px solid #16283a;color:#b8c8da;vertical-align:top}tr:hover td{background:#0e1d2f}.lock-row td{background:rgba(75,34,43,.08)}.mono{font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace}.numeric{text-align:right}.statement{max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.command{display:inline-block;border:1px solid #2e435b;border-radius:999px;padding:2px 7px;color:#91a5bb}.command.active-query{border-color:#285d9f;color:#74aef8;background:#10294a}.waiter,.blocker{display:inline-block;border-radius:5px;padding:2px 6px}.waiter{border:1px solid #765a2a;background:#231e12;color:#d5ad63}.blocker{border:1px solid #71333f;background:#28131b;color:#ed9bad}.key-value .name{width:35%;color:#8eb6eb}.key-value .value{white-space:pre-wrap;word-break:break-word}.table-empty{padding:36px;text-align:center;color:#60758e}.empty{display:grid;place-items:center;gap:5px;min-height:360px;border:1px dashed #2b4058;border-radius:10px;background:#0a1624;color:#d8e5f3}.empty span{color:#71869f;font-size:12px}@media(max-width:1200px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .admin-shell{padding:16px 22px 24px;display:grid;gap:14px;min-height:0}.toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.toolbar label{display:grid;gap:5px;min-width:220px}.toolbar label.filter{flex:1;min-width:260px}.toolbar span{color:#748aa4;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.toolbar input,.toolbar select{height:36px;border:1px solid #263b54;border-radius:7px;padding:0 10px;background:#0c1929;color:#dce8f6;outline:none}.toolbar input:focus,.toolbar select:focus{border-color:#467fc8}.toolbar button{height:36px;border-radius:7px;padding:0 13px;cursor:pointer}.primary{border:1px solid #3d81de;background:#3478d4;color:#fff}.secondary{border:1px solid #2a4059;background:#101f31;color:#9fb2c9}.toolbar button:disabled,.toolbar input:disabled{opacity:.5;cursor:default}.summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.summary-grid article{border:1px solid #1e3044;border-radius:9px;padding:13px 14px;background:#0c1827}.summary-grid article.attention{border-color:#76424a;background:#1b151e}.summary-grid span,.summary-grid small{display:block;color:#71869f;font-size:10px}.summary-grid article.attention span,.summary-grid article.attention small{color:#c68992}.summary-grid strong{display:block;margin:4px 0;color:#f1f6fc;font-size:23px}.summary-grid .time-value{font-size:17px;line-height:28px}.panel{min-height:420px;border:1px solid #1e3044;border-radius:10px;overflow:hidden;background:#0b1726}.tabs{display:flex;gap:4px;padding:9px 10px;border-bottom:1px solid #1e3044;background:#0e1b2b;flex-wrap:wrap}.tabs button{border:0;border-radius:6px;padding:8px 11px;background:transparent;color:#8297af;cursor:pointer}.tabs button.active{background:#182b42;color:#e5eef9}.error{margin:12px;border:1px solid #6b3240;border-radius:7px;padding:10px 12px;background:#2a151d;color:#ef9ead;font-size:12px}.table-wrap{overflow:auto;max-height:560px}table{width:100%;border-collapse:collapse;font-size:11px}th{position:sticky;top:0;z-index:1;padding:9px 10px;border-bottom:1px solid #24364b;background:#101d2e;color:#7188a3;text-align:left;font-size:9px;letter-spacing:.08em;text-transform:uppercase}td{padding:9px 10px;border-bottom:1px solid #16283a;color:#b8c8da;vertical-align:top}tr:hover td{background:#0e1d2f}.lock-row td{background:rgba(75,34,43,.08)}.mono{font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace}.numeric{text-align:right}.statement{max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.command{display:inline-block;border:1px solid #2e435b;border-radius:999px;padding:2px 7px;color:#91a5bb}.command.active-query{border-color:#285d9f;color:#74aef8;background:#10294a}.waiter,.blocker{display:inline-block;border-radius:5px;padding:2px 6px}.waiter{border:1px solid #765a2a;background:#231e12;color:#d5ad63}.blocker{border:1px solid #71333f;background:#28131b;color:#ed9bad}.key-value .name{width:35%;color:#8eb6eb}.key-value .value{white-space:pre-wrap;word-break:break-word}.table-empty{padding:36px;text-align:center;color:#60758e}.empty{display:grid;place-items:center;gap:5px;min-height:360px;border:1px dashed #2b4058;border-radius:10px;background:#0a1624;color:#d8e5f3}.empty span{color:#71869f;font-size:12px}@media(max-width:1200px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
