@@ -1,6 +1,12 @@
 {
   "name": "@nublox/sql-workbench-desktop",
   "version": "0.2.0-rc.1",
+  "description": "NuBlox SQL Workbench desktop database engineering environment",
+  "author": {
+    "name": "NuBlox",
+    "email": "56647740+NuBlox@users.noreply.github.com"
+  },
+  "desktopName": "com.nublox.sqlworkbench",
   "private": true,
   "type": "module",
   "main": "./dist/electron/main/main.js",
@@ -41,6 +47,7 @@
   "build": {
     "appId": "com.nublox.sqlworkbench",
     "productName": "NuBlox SQL Workbench",
+    "executableName": "nublox-sql-workbench",
     "asar": true,
     "directories": {
       "output": "release"
@@ -59,7 +66,11 @@
     },
     "linux": {
       "category": "Development",
-      "target": ["AppImage", "deb", "tar.gz"]
+      "target": ["AppImage", "deb", "tar.gz"],
+      "syncDesktopName": true,
+      "maintainer": "NuBlox <56647740+NuBlox@users.noreply.github.com>",
+      "vendor": "NuBlox",
+      "synopsis": "NuBlox SQL Workbench"
     },
     "nsis": {
       "oneClick": false,
