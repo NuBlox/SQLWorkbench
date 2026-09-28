@@ -28,3 +28,6 @@ jobs:
 
       - name: Build and test
         run: pnpm check
+
+      - name: Verify desktop package assembly
+        run: pnpm --filter @nublox/sql-workbench-desktop package:dir
