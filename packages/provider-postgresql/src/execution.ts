@@ -62,7 +62,6 @@ export async function executePostgreSqlRequest(
     request.signal?.addEventListener("abort", abortListener, { once: true });
     if (timeoutMs !== undefined) {
       timeoutHandle = setTimeout(() => requestCancellation("timeout"), timeoutMs);
-      timeoutHandle.unref?.();
     }
 
     const startedAt = new Date();
