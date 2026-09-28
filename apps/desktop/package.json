@@ -1,6 +1,6 @@
 {
   "name": "@nublox/sql-workbench-desktop",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-rc.2",
   "private": true,
   "description": "NuBlox SQL Workbench desktop database engineering environment",
   "author": "NuBlox",
@@ -13,10 +13,10 @@
     "start": "pnpm build && electron .",
     "start:built": "electron .",
     "test": "node --test test/*.test.mjs",
-    "package:dir": "pnpm build && pnpm dlx electron-builder@26.15.3 --dir --publish never",
-    "package:mac": "pnpm build && pnpm dlx electron-builder@26.15.3 --mac zip --publish never",
-    "package:linux": "pnpm build && pnpm dlx electron-builder@26.15.3 --linux AppImage --publish never",
-    "package:win": "pnpm build && pnpm dlx electron-builder@26.15.3 --win portable --publish never"
+    "package:dir": "pnpm -w build && electron-builder --dir --publish never",
+    "package:mac": "pnpm -w build && electron-builder --mac zip --publish never",
+    "package:linux": "pnpm -w build && electron-builder --linux AppImage --publish never",
+    "package:win": "pnpm -w build && electron-builder --win portable --publish never"
   },
   "dependencies": {
     "@nublox/workbench-catalog": "workspace:*",
@@ -33,6 +33,7 @@
     "@sveltejs/vite-plugin-svelte": "7.3.1",
     "@types/node": "^22.18.6",
     "electron": "44.4.5",
+    "electron-builder": "26.15.3",
     "monaco-editor": "0.57.0",
     "svelte": "5.57.1",
     "svelte-check": "4.7.6",
@@ -42,6 +43,7 @@
   "build": {
     "appId": "com.nublox.sqlworkbench",
     "productName": "NuBlox SQL Workbench",
+    "executableName": "NuBlox-SQL-Workbench",
     "artifactName": "NuBlox-SQL-Workbench-${version}-${os}-${arch}.${ext}",
     "asar": true,
     "directories": {
