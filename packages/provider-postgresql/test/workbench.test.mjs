@@ -13,13 +13,14 @@ function fakeSession(providerId = "postgresql") {
   };
 }
 
-test("parity provider advertises implemented PostgreSQL catalog capabilities", () => {
+test("parity provider advertises implemented PostgreSQL catalog and execution capabilities", () => {
   const provider = new PostgreSqlDatabaseProvider();
   assert.equal(provider.id, "postgresql");
   assert.equal(provider.displayName, "PostgreSQL");
   assert.equal(postgresqlCapabilities.procedures, true);
   assert.equal(postgresqlCapabilities.functions, true);
   assert.equal(postgresqlCapabilities.triggers, true);
+  assert.equal(postgresqlCapabilities.queryCancellation, true);
   assert.equal(postgresqlCapabilities.objectSearch, true);
   assert.equal(postgresqlCapabilities.privilegeIntrospection, true);
   assert.ok(provider.explorer);
