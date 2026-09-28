@@ -169,9 +169,21 @@ export interface DatabaseProvider {
 
 export type {
   DatabaseAdministrationCapabilities,
+  DatabaseAdministrationPreview,
   DatabaseAdministrationProvider,
+  DatabaseDataWriteResult,
+  DatabaseExternalConnection,
+  DatabaseExternalToolPlan,
   DatabaseLockWait,
+  DatabaseRoleMembership,
+  DatabaseSecurityChange,
+  DatabaseSecurityPrincipal,
+  DatabaseSecurityPrivilege,
   DatabaseServerSession,
   DatabaseServerStatus,
   DatabaseServerVariable,
+  DatabaseStorageEntry,
+  DatabaseTableReadRequest,
+  DatabaseTableReference,
+  DatabaseTableWriteRequest,
 } from "./administration.js";
