@@ -1,0 +1,113 @@
+name: Release Candidate
+
+on:
+  push:
+    branches:
+      - "release/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build and test
+        run: pnpm check
+
+  package:
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            artifact: macos
+          - os: windows-latest
+            artifact: windows
+          - os: ubuntu-latest
+            artifact: linux
+    runs-on: ${{ matrix.os }}
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Package desktop
+        run: pnpm --filter @nublox/sql-workbench-desktop package
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nublox-sql-workbench-${{ matrix.artifact }}
+          path: |
+            apps/desktop/release/*
+            !apps/desktop/release/*-unpacked/**
+            !apps/desktop/release/mac*/**
+          if-no-files-found: error
+          retention-days: 30
+
+  prerelease:
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nublox-sql-workbench-*
+          path: artifacts
+          merge-multiple: true
+
+      - name: Resolve release version
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(node -e "console.log(JSON.parse(require('fs').readFileSync('apps/desktop/package.json','utf8')).version)")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "NuBlox SQL Workbench $TAG" \
+            --notes-file "docs/releases/0.2.0-rc.1.md" \
+            --prerelease
+          while IFS= read -r -d '' file; do
+            gh release upload "$TAG" "$file" --repo "$GITHUB_REPOSITORY" --clobber
+          done < <(find artifacts -type f -print0)
