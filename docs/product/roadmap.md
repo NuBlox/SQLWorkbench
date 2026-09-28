@@ -117,7 +117,7 @@ Provider priority does not alter the database-neutral core contract.
 - [x] routines, triggers, principals, roles and privileges
 - [x] object search
 - [x] query cancellation and per-query timeout control
-- [ ] migration and view-engineering adapters
+- [x] migration and view-engineering adapters
 - [ ] administration/operations adapter
 - [ ] desktop provider registration and connection UX
 - [ ] integration tests against supported PostgreSQL versions

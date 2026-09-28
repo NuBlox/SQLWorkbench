@@ -13,6 +13,14 @@
     "./foundation": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./migration": {
+      "types": "./dist/migration.d.ts",
+      "import": "./dist/migration.js"
+    },
+    "./view-engineering": {
+      "types": "./dist/view-engineering.d.ts",
+      "import": "./dist/view-engineering.js"
     }
   },
   "scripts": {
