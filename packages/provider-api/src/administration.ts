@@ -62,9 +62,26 @@ export interface DatabasePrivilegeGrant {
   readonly grantable: boolean;
 }
 
+interface DatabasePrivilegeSecurityChangeBase {
+  readonly grantee: string;
+  readonly privilege: string;
+  readonly scope: DatabasePrivilegeScope;
+  readonly catalog?: string;
+  readonly table?: string;
+  readonly withGrantOption?: boolean;
+}
+
+interface DatabaseRoleSecurityChangeBase {
+  readonly grantee: string;
+  readonly role: string;
+  readonly adminOption?: boolean;
+}
+
 export type DatabaseSecurityChange =
-  | { readonly kind: "grant-privilege" | "revoke-privilege"; readonly grantee: string; readonly privilege: string; readonly scope: DatabasePrivilegeScope; readonly catalog?: string; readonly table?: string; readonly withGrantOption?: boolean }
-  | { readonly kind: "grant-role" | "revoke-role"; readonly grantee: string; readonly role: string; readonly adminOption?: boolean };
+  | ({ readonly kind: "grant-privilege" } & DatabasePrivilegeSecurityChangeBase)
+  | ({ readonly kind: "revoke-privilege" } & DatabasePrivilegeSecurityChangeBase)
+  | ({ readonly kind: "grant-role" } & DatabaseRoleSecurityChangeBase)
+  | ({ readonly kind: "revoke-role" } & DatabaseRoleSecurityChangeBase);
 
 export interface DatabaseAdministrationPreview {
   readonly providerId: string;
