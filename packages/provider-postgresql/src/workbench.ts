@@ -14,11 +14,14 @@ import type {
 } from "@nublox/workbench-catalog";
 import type {
   DatabaseCapabilities,
+  DatabaseConnectionConfig,
   DatabaseExplorerProvider,
   DatabaseSession,
   ExplorerNamespaceOptions,
   ExplorerObjectReference,
   ExplorerSearchRequest,
+  QueryExecution,
+  QueryRequest,
 } from "@nublox/workbench-provider-api";
 import {
   PostgreSqlDatabaseProvider as FoundationPostgreSqlDatabaseProvider,
@@ -46,12 +49,17 @@ import {
   type PostgreSqlSearchRow,
   type PostgreSqlTriggerRow,
 } from "./catalog-security.js";
+import {
+  createPostgreSqlControlPool,
+  executePostgreSqlRequest,
+} from "./execution.js";
 
 export const postgresqlCapabilities: DatabaseCapabilities = Object.freeze({
   ...foundationPostgresqlCapabilities,
   procedures: true,
   functions: true,
   triggers: true,
+  queryCancellation: true,
   objectSearch: true,
   privilegeIntrospection: true,
 });
@@ -59,6 +67,7 @@ export const postgresqlCapabilities: DatabaseCapabilities = Object.freeze({
 export class PostgreSqlDatabaseProvider extends FoundationPostgreSqlDatabaseProvider {
   override readonly capabilities = postgresqlCapabilities;
   override readonly explorer: DatabaseExplorerProvider;
+  private readonly controlPools = new WeakMap<DatabaseSession, Pool>();
 
   constructor() {
     super();
@@ -67,6 +76,36 @@ export class PostgreSqlDatabaseProvider extends FoundationPostgreSqlDatabaseProv
       throw new Error("PostgreSQL foundation explorer is unavailable.");
     }
     this.explorer = new PostgreSqlCatalogSecurityExplorer(foundationExplorer);
+  }
+
+  override async connect(config: DatabaseConnectionConfig): Promise<DatabaseSession> {
+    const session = await super.connect(config);
+    const controlPool = createPostgreSqlControlPool(config);
+    this.controlPools.set(session, controlPool);
+
+    const closeFoundationSession = session.close.bind(session);
+    let closed = false;
+    session.close = async (): Promise<void> => {
+      if (closed) return;
+      closed = true;
+      this.controlPools.delete(session);
+      const outcomes = await Promise.allSettled([
+        closeFoundationSession(),
+        controlPool.end(),
+      ]);
+      const failure = outcomes.find((outcome): outcome is PromiseRejectedResult => outcome.status === "rejected");
+      if (failure) throw failure.reason;
+    };
+
+    return session;
+  }
+
+  override execute(session: DatabaseSession, request: QueryRequest): Promise<QueryExecution> {
+    const controlPool = this.controlPools.get(session);
+    if (!controlPool) {
+      throw new Error("PostgreSQL query control is unavailable for this session.");
+    }
+    return executePostgreSqlRequest(poolFor(session), controlPool, request);
   }
 }
 
