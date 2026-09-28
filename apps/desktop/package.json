@@ -13,10 +13,10 @@
     "start": "pnpm build && electron .",
     "start:built": "electron .",
     "test": "node --test test/*.test.mjs",
-    "package:dir": "pnpm build && electron-builder --dir --publish never",
-    "package:mac": "pnpm build && electron-builder --mac zip --publish never",
-    "package:linux": "pnpm build && electron-builder --linux AppImage --publish never",
-    "package:win": "pnpm build && electron-builder --win portable --publish never"
+    "package:dir": "pnpm -w build && electron-builder --dir --publish never",
+    "package:mac": "pnpm -w build && electron-builder --mac zip --publish never",
+    "package:linux": "pnpm -w build && electron-builder --linux AppImage --publish never",
+    "package:win": "pnpm -w build && electron-builder --win portable --publish never"
   },
   "dependencies": {
     "@nublox/workbench-catalog": "workspace:*",
