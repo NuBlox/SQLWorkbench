@@ -28,17 +28,13 @@
             ? { milestone: "M4 · Schema Engineering", title: "View Designer", description: "Edit live view definitions while preserving provider metadata and guarded execution." }
             : activeModule === "er"
               ? { milestone: "M4 · Schema Engineering", title: "ER Designer", description: "Arrange the live entity model and create or remove guarded foreign-key relationships." }
-              : { milestone: "M6 · Administration & Operations", title: "Administration", description: "Inspect live database processes, global server variables and runtime server status." };
+              : { milestone: "M6 · Administration & Operations", title: "Administration", description: "Operate live MySQL sessions, locks, security, storage, data movement and provider backup hooks through guarded workflows." };
 
-  $: phaseLabel = activeModule === "administration"
-    ? "M6 active"
-    : activeModule === "sql"
-      ? "M5 complete"
-      : activeModule === "schema" || activeModule === "views" || activeModule === "er"
-        ? "M4 complete"
-        : activeModule === "explorer"
-          ? "M2 complete"
-          : "M1 complete";
+  $: phaseLabel = version.includes("-rc.") ? `RC ${version}`
+    : activeModule === "administration" ? "M6 complete"
+    : activeModule === "sql" ? "M5 complete"
+    : activeModule === "schema" || activeModule === "views" || activeModule === "er" ? "M4 complete"
+    : activeModule === "explorer" ? "M2 complete" : "M1 complete";
 
   onMount(() => {
     window.nublox.app.rendererReady();
@@ -72,21 +68,13 @@
       <div><p class="eyebrow">{heading.milestone}</p><h1>{heading.title}</h1><p>{heading.description}</p></div>
       <div class="phase-pill"><span></span>{phaseLabel}</div>
     </header>
-    {#if activeModule === "connections"}
-      <ConnectionsWorkspace />
-    {:else if activeModule === "sql"}
-      <SqlWorkspace />
-    {:else if activeModule === "explorer"}
-      <DatabaseExplorer />
-    {:else if activeModule === "schema"}
-      <SchemaDesigner />
-    {:else if activeModule === "views"}
-      <ViewDesigner />
-    {:else if activeModule === "er"}
-      <ErDesigner />
-    {:else}
-      <AdministrationWorkspace />
-    {/if}
+    {#if activeModule === "connections"}<ConnectionsWorkspace />
+    {:else if activeModule === "sql"}<SqlWorkspace />
+    {:else if activeModule === "explorer"}<DatabaseExplorer />
+    {:else if activeModule === "schema"}<SchemaDesigner />
+    {:else if activeModule === "views"}<ViewDesigner />
+    {:else if activeModule === "er"}<ErDesigner />
+    {:else}<AdministrationWorkspace />{/if}
   </main>
 </div>
 
