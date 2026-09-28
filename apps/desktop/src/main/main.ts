@@ -14,6 +14,7 @@ import type {
   SaveProfileRequest, SchemaExecuteRequest, SchemaGraphRequest, SchemaLoadRequest, SchemaPreviewRequest,
   ViewExecuteRequest, ViewLoadRequest, ViewPreviewRequest,
 } from "../lib/desktop-api.js";
+import { registerAdministrationOperationsIpc } from "./administration-ipc.js";
 import { DesktopAdministrationService } from "./administration-service.js";
 import { EncryptedFileCredentialStore, type SecretCipher } from "./encrypted-credential-store.js";
 import { DesktopErService } from "./er-service.js";
@@ -243,6 +244,7 @@ function registerIpc(desktop: DesktopServices): void {
   const schema = new DesktopSchemaService(desktop.connections);
   const views = new DesktopViewService(desktop.connections);
   const er = new DesktopErService(desktop.connections);
+  registerAdministrationOperationsIpc(desktop);
 
   ipcMain.handle(IPC.profilesList, () => desktop.listProfiles()); ipcMain.handle(IPC.profilesSave, (_event, request: SaveProfileRequest) => desktop.saveProfile(request)); ipcMain.handle(IPC.profilesRemove, (_event, request: DeleteProfileRequest) => desktop.removeProfile(request)); ipcMain.handle(IPC.profilesClearCredential, (_event, profileId: string) => desktop.clearCredential(profileId));
   ipcMain.handle(IPC.connectionsList, () => desktop.listConnections()); ipcMain.handle(IPC.connectionsConnect, (_event, profileId: string) => desktop.connectProfile(profileId)); ipcMain.handle(IPC.connectionsDisconnect, (_event, profileId: string) => desktop.disconnectProfile(profileId));
