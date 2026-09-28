@@ -9,8 +9,9 @@ import type {
   ExplorerRelationRequest, ExplorerRoleGrant, ExplorerRoutine, ExplorerSearchRequest, ExplorerSearchResult, ExplorerTrigger,
 } from "@nublox/workbench-core";
 import type {
-  DatabaseLockWait, DatabaseMigrationPreview, DatabaseReferentialAction, DatabaseSchemaChangePlan, DatabaseServerSession,
-  DatabaseServerStatus, DatabaseServerVariable, DatabaseViewChangePlan, DatabaseViewDefinition,
+  DatabaseAdministrationPreview, DatabaseDataWriteResult, DatabaseLockWait, DatabaseMigrationPreview, DatabaseReferentialAction,
+  DatabaseRoleMembership, DatabaseSchemaChangePlan, DatabaseSecurityChange, DatabaseSecurityPrincipal, DatabaseSecurityPrivilege,
+  DatabaseServerSession, DatabaseServerStatus, DatabaseServerVariable, DatabaseStorageEntry, DatabaseViewChangePlan, DatabaseViewDefinition,
 } from "@nublox/workbench-provider-api";
 import type { QueryCompletionCatalog } from "@nublox/workbench-query-engineering";
 import type { QueryPlanView } from "@nublox/workbench-query-engineering/explain-plan";
@@ -22,9 +23,10 @@ export type {
   ExplorerRoutine, ExplorerSearchRequest, ExplorerSearchResult, ExplorerTrigger,
 } from "@nublox/workbench-core";
 export type {
-  DatabaseLockWait, DatabaseMigrationPreview, DatabaseReferentialAction, DatabaseSchemaChangePlan, DatabaseServerSession, DatabaseServerStatus,
-  DatabaseServerVariable, DatabaseViewAlgorithm, DatabaseViewChangePlan, DatabaseViewCheckOption, DatabaseViewDefinition,
-  DatabaseViewSecurityType,
+  DatabaseAdministrationPreview, DatabaseDataWriteResult, DatabaseLockWait, DatabaseMigrationPreview, DatabaseReferentialAction,
+  DatabaseRoleMembership, DatabaseSchemaChangePlan, DatabaseSecurityChange, DatabaseSecurityPrincipal, DatabaseSecurityPrivilege,
+  DatabaseServerSession, DatabaseServerStatus, DatabaseServerVariable, DatabaseStorageEntry, DatabaseViewAlgorithm,
+  DatabaseViewChangePlan, DatabaseViewCheckOption, DatabaseViewDefinition, DatabaseViewSecurityType,
 } from "@nublox/workbench-provider-api";
 export type { QueryCatalogColumn, QueryCatalogNamespace, QueryCatalogRelation, QueryCompletionCatalog } from "@nublox/workbench-query-engineering";
 export type { QueryPlanNode, QueryPlanProperty, QueryPlanView } from "@nublox/workbench-query-engineering/explain-plan";
@@ -37,6 +39,29 @@ export interface SaveProfileRequest { readonly draft: ConnectionProfileDraft; re
 export interface DeleteProfileRequest { readonly id: string; readonly expectedRevision: number; }
 export interface OpenConnectionInfo { readonly id: string; readonly profileId: string; readonly providerId: string; readonly connectedAt: string; readonly healthy: boolean; readonly latencyMs?: number; readonly message?: string; }
 export interface AdministrationValueRequest { readonly connectionId: string; readonly filter?: string; }
+export interface AdministrationSecurityChangeRequest { readonly connectionId: string; readonly change: DatabaseSecurityChange; }
+export interface AdministrationGuard { readonly fingerprint: string; readonly destructive: boolean; readonly confirmationPhrase: string; }
+export interface AdministrationSecurityPreparedPreview { readonly preview: DatabaseAdministrationPreview; readonly guard: AdministrationGuard; }
+export interface AdministrationSecurityExecuteRequest extends AdministrationSecurityChangeRequest { readonly fingerprint: string; readonly confirmation: string; }
+export interface AdministrationSecurityExecutionResult { readonly completed: boolean; readonly statementsExecuted: number; }
+export interface AdministrationTableRequest { readonly connectionId: string; readonly catalog: string; readonly table: string; readonly limit?: number; }
+export interface AdministrationDataFileRequest extends AdministrationTableRequest { readonly format?: "json" | "csv"; }
+export interface AdministrationDataFileResult { readonly canceled: boolean; readonly path?: string; readonly rowsRead: number; readonly rowsWritten?: number; }
+export interface AdministrationCompareRequest {
+  readonly leftConnectionId: string; readonly leftCatalog: string; readonly leftTable: string;
+  readonly rightConnectionId: string; readonly rightCatalog: string; readonly rightTable: string; readonly limit?: number;
+}
+export interface AdministrationCompareResult {
+  readonly leftRows: number; readonly rightRows: number; readonly matchingRows: number; readonly differentRows: number;
+  readonly onlyLeft: number; readonly onlyRight: number; readonly leftColumns: readonly string[]; readonly rightColumns: readonly string[]; readonly columnsMatch: boolean;
+}
+export interface AdministrationTransferPreviewRequest extends AdministrationCompareRequest {}
+export interface AdministrationTransferPreparedPreview { readonly sourceRows: number; readonly targetRows: number; readonly guard: AdministrationGuard; }
+export interface AdministrationTransferExecuteRequest extends AdministrationTransferPreviewRequest { readonly fingerprint: string; readonly confirmation: string; }
+export interface AdministrationTransferResult extends DatabaseDataWriteResult { readonly sourceRows: number; }
+export interface AdministrationBackupRequest { readonly connectionId: string; readonly catalog: string; }
+export interface AdministrationRestoreRequest extends AdministrationBackupRequest { readonly confirmation: string; }
+export interface AdministrationExternalToolResult { readonly canceled: boolean; readonly path?: string; readonly executable?: string; readonly exitCode?: number; readonly stderr?: string; }
 
 export type QueryRunMode = "statement" | "selection" | "script";
 export type QueryCellValue = string | number | boolean | null;
@@ -91,6 +116,19 @@ export interface DesktopApi {
     locks(connectionId: string): Promise<readonly DatabaseLockWait[]>;
     variables(request: AdministrationValueRequest): Promise<readonly DatabaseServerVariable[]>;
     status(request: AdministrationValueRequest): Promise<readonly DatabaseServerStatus[]>;
+    principals(connectionId: string): Promise<readonly DatabaseSecurityPrincipal[]>;
+    privileges(connectionId: string, grantee?: string): Promise<readonly DatabaseSecurityPrivilege[]>;
+    roles(connectionId: string): Promise<readonly DatabaseRoleMembership[]>;
+    previewSecurity(request: AdministrationSecurityChangeRequest): Promise<AdministrationSecurityPreparedPreview>;
+    executeSecurity(request: AdministrationSecurityExecuteRequest): Promise<AdministrationSecurityExecutionResult>;
+    storage(connectionId: string): Promise<readonly DatabaseStorageEntry[]>;
+    exportData(request: AdministrationDataFileRequest): Promise<AdministrationDataFileResult>;
+    importData(request: AdministrationTableRequest): Promise<AdministrationDataFileResult>;
+    compareData(request: AdministrationCompareRequest): Promise<AdministrationCompareResult>;
+    previewTransfer(request: AdministrationTransferPreviewRequest): Promise<AdministrationTransferPreparedPreview>;
+    executeTransfer(request: AdministrationTransferExecuteRequest): Promise<AdministrationTransferResult>;
+    backup(request: AdministrationBackupRequest): Promise<AdministrationExternalToolResult>;
+    restore(request: AdministrationRestoreRequest): Promise<AdministrationExternalToolResult>;
   };
   readonly explorer: {
     namespaces(request: ExplorerNamespaceRequest): Promise<readonly ExplorerNamespace[]>; relations(request: ExplorerRelationRequest): Promise<readonly ExplorerRelation[]>; describe(request: ExplorerRelationDetailsRequest): Promise<ExplorerRelationDetails>;
