@@ -45,6 +45,7 @@ export async function executePostgreSqlRequest(
   throwIfAlreadyAborted(request.signal);
 
   const client = await queryPool.connect();
+  const processId = backendProcessId(client);
   let cancellationSource: CancellationSource | undefined;
   let cancellationDispatch: Promise<void> | undefined;
   let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
@@ -52,7 +53,7 @@ export async function executePostgreSqlRequest(
   const requestCancellation = (source: CancellationSource): void => {
     if (cancellationSource) return;
     cancellationSource = source;
-    cancellationDispatch = cancelBackend(controlPool, client.processID).catch(() => undefined);
+    cancellationDispatch = cancelBackend(controlPool, processId).catch(() => undefined);
   };
 
   const abortListener = (): void => requestCancellation("signal");
@@ -105,6 +106,14 @@ export function normalizeTimeoutMs(timeoutMs: number | undefined): number | unde
     throw new Error("PostgreSQL query timeoutMs must be a positive finite number.");
   }
   return Math.ceil(timeoutMs);
+}
+
+function backendProcessId(client: unknown): number {
+  const value = (client as { readonly processID?: unknown }).processID;
+  if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
+    throw new Error("PostgreSQL client does not expose a valid backend process identifier.");
+  }
+  return value;
 }
 
 async function cancelBackend(controlPool: Pool, processId: number): Promise<void> {
