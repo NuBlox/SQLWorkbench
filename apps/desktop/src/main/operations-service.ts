@@ -3,11 +3,7 @@ import { createReadStream, createWriteStream } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 
-import {
-  ConnectionProfileResolver,
-  type ConnectionProfileRepository,
-  type CredentialStore,
-} from "@nublox/workbench-connection-profiles";
+import { ConnectionProfileResolver, type ConnectionProfileRepository, type CredentialStore } from "@nublox/workbench-connection-profiles";
 import type { ConnectionManager } from "@nublox/workbench-core";
 import type {
   DatabaseAdministrationProvider,
@@ -15,7 +11,6 @@ import type {
   DatabaseStorageEntry,
   QueryResultSet,
 } from "@nublox/workbench-provider-api";
-
 import type {
   AdministrationBackupRequest,
   AdministrationCompareRequest,
@@ -68,11 +63,10 @@ export class DesktopOperationsService {
     const { administration } = this.#require(request.connectionId, "users", "security administration");
     if (!administration.previewSecurityChange) throw missing(administration, "security change preview");
     const preview = administration.previewSecurityChange(request.change);
-    const fingerprint = securityFingerprint(request.connectionId, request.change, preview.statements);
     return {
       preview,
       guard: {
-        fingerprint,
+        fingerprint: securityFingerprint(request.connectionId, request.change, preview.statements),
         destructive: preview.destructive,
         confirmationPhrase: preview.destructive ? "APPLY DESTRUCTIVE SECURITY CHANGE" : "APPLY SECURITY CHANGE",
       },
@@ -162,8 +156,7 @@ export class DesktopOperationsService {
   async executeTransfer(request: AdministrationTransferExecuteRequest): Promise<AdministrationTransferResult> {
     const limit = boundedLimit(request.limit);
     const source = await this.#read({ connectionId: request.leftConnectionId, catalog: request.leftCatalog, table: request.leftTable, limit });
-    const fingerprint = transferFingerprint(request, source.rows);
-    if (request.fingerprint !== fingerprint) throw new Error("Transfer preview is stale. Generate a fresh preview before transferring data.");
+    if (request.fingerprint !== transferFingerprint(request, source.rows)) throw new Error("Transfer preview is stale. Generate a fresh preview before transferring data.");
     if (request.confirmation !== "TRANSFER DATA") throw new Error("Confirmation must exactly match 'TRANSFER DATA'.");
     const { administration, session } = this.#require(request.rightConnectionId, "dataTransfer", "data transfer");
     if (!administration.writeTableRows) throw missing(administration, "data transfer");
@@ -175,8 +168,7 @@ export class DesktopOperationsService {
     const { administration } = this.#require(request.connectionId, "backupRestore", "backup");
     if (!administration.createBackupPlan) throw missing(administration, "backup hook");
     const config = await this.#resolver.resolve(request.connectionId);
-    const plan = administration.createBackupPlan(config, request.catalog);
-    return runExternal(plan, path, config.password);
+    return runExternal(administration.createBackupPlan(config, request.catalog), path, config.password);
   }
 
   async restore(request: AdministrationBackupRequest, path: string, confirmation: string): Promise<AdministrationExternalToolResult> {
@@ -184,8 +176,7 @@ export class DesktopOperationsService {
     const { administration } = this.#require(request.connectionId, "backupRestore", "restore");
     if (!administration.createRestorePlan) throw missing(administration, "restore hook");
     const config = await this.#resolver.resolve(request.connectionId);
-    const plan = administration.createRestorePlan(config, request.catalog);
-    return runExternal(plan, path, config.password);
+    return runExternal(administration.createRestorePlan(config, request.catalog), path, config.password);
   }
 
   async #read(request: AdministrationTableRequest): Promise<QueryResultSet> {
@@ -213,9 +204,23 @@ function boundedLimit(value?: number): number {
 function securityFingerprint(connectionId: string, change: DatabaseSecurityChange, statements: readonly string[]): string {
   return digest(JSON.stringify({ connectionId, change, statements }));
 }
-function transferFingerprint(request: AdministrationTransferPreviewRequest, rows: readonly Readonly<Record<string, unknown>>[]): string {
-  return digest(JSON.stringify({ request, rows: rows.map(canonicalRow) }));
+
+function transferFingerprint(
+  request: AdministrationTransferPreviewRequest | AdministrationTransferExecuteRequest,
+  rows: readonly Readonly<Record<string, unknown>>[],
+): string {
+  const stableRequest = {
+    leftConnectionId: request.leftConnectionId,
+    leftCatalog: request.leftCatalog,
+    leftTable: request.leftTable,
+    rightConnectionId: request.rightConnectionId,
+    rightCatalog: request.rightCatalog,
+    rightTable: request.rightTable,
+    ...(request.limit !== undefined ? { limit: request.limit } : {}),
+  };
+  return digest(JSON.stringify({ request: stableRequest, rows: rows.map(canonicalRow) }));
 }
+
 function digest(value: string): string { return createHash("sha256").update(value).digest("hex"); }
 function canonicalRow(row: Readonly<Record<string, unknown>>): Record<string, unknown> { return Object.fromEntries(Object.keys(row).sort().map((key) => [key, row[key]])); }
 function multiset(rows: readonly Readonly<Record<string, unknown>>[]): Map<string, number> { const result = new Map<string, number>(); for (const row of rows) { const key = JSON.stringify(canonicalRow(row)); result.set(key, (result.get(key) ?? 0) + 1); } return result; }
@@ -230,14 +235,18 @@ function serializeCsv(result: QueryResultSet): string {
 }
 function csvCell(value: unknown): string { const text = value === null || value === undefined ? "" : typeof value === "string" ? value : JSON.stringify(value); const safe = /^[=+\-@]/u.test(text) ? `'${text}` : text; return /[",\n\r]/u.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe; }
 
-async function runExternal(plan: { readonly executable: string; readonly args: readonly string[]; readonly direction: "stdout-to-file" | "file-to-stdin"; readonly passwordEnvironmentVariable?: string }, path: string, password?: string): Promise<AdministrationExternalToolResult> {
+async function runExternal(
+  plan: { readonly executable: string; readonly args: readonly string[]; readonly direction: "stdout-to-file" | "file-to-stdin"; readonly passwordEnvironmentVariable?: string },
+  path: string,
+  password?: string,
+): Promise<AdministrationExternalToolResult> {
   return new Promise((resolve, reject) => {
     const env = { ...process.env, ...(plan.passwordEnvironmentVariable && password !== undefined ? { [plan.passwordEnvironmentVariable]: password } : {}) };
     const child = spawn(plan.executable, [...plan.args], { env, stdio: ["pipe", "pipe", "pipe"] });
     let stderr = "";
     child.stderr.setEncoding("utf8");
     child.stderr.on("data", (chunk: string) => { stderr += chunk; if (stderr.length > 64_000) stderr = stderr.slice(-64_000); });
-    child.on("error", (error) => reject(new Error(`Unable to start '${plan.executable}': ${error.message}`)));
+    child.on("error", (caught) => reject(new Error(`Unable to start '${plan.executable}': ${caught.message}`)));
     if (plan.direction === "stdout-to-file") {
       child.stdout.pipe(createWriteStream(path, { mode: 0o600 }));
       child.stdin.end();
