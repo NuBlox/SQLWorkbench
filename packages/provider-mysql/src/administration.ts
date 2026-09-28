@@ -29,7 +29,8 @@ const LOCK_WAITS_SQL = `SELECT
   CONCAT_WS('.', requested.OBJECT_SCHEMA, requested.OBJECT_NAME) AS objectName,
   requested.LOCK_TYPE AS lockType,
   requested.LOCK_MODE AS lockMode,
-  waiting_statement.SQL_TEXT AS statementText
+  TIMESTAMPDIFF(SECOND, waiting_trx.TRX_WAIT_STARTED, CURRENT_TIMESTAMP()) AS waitSeconds,
+  COALESCE(waiting_statement.SQL_TEXT, waiting_trx.TRX_QUERY) AS statementText
 FROM performance_schema.data_lock_waits AS waits
 JOIN performance_schema.data_locks AS requested
   ON requested.ENGINE = waits.ENGINE
@@ -38,10 +39,12 @@ JOIN performance_schema.threads AS waiting_thread
   ON waiting_thread.THREAD_ID = waits.REQUESTING_THREAD_ID
 LEFT JOIN performance_schema.threads AS blocking_thread
   ON blocking_thread.THREAD_ID = waits.BLOCKING_THREAD_ID
+LEFT JOIN INFORMATION_SCHEMA.INNODB_TRX AS waiting_trx
+  ON waiting_trx.TRX_MYSQL_THREAD_ID = waiting_thread.PROCESSLIST_ID
 LEFT JOIN performance_schema.events_statements_current AS waiting_statement
   ON waiting_statement.THREAD_ID = waits.REQUESTING_THREAD_ID
 WHERE waiting_thread.PROCESSLIST_ID IS NOT NULL
-ORDER BY waiting_thread.PROCESSLIST_ID, blocking_thread.PROCESSLIST_ID`;
+ORDER BY waitSeconds DESC, waiting_thread.PROCESSLIST_ID, blocking_thread.PROCESSLIST_ID`;
 
 export const mysqlAdministrationCapabilities: DatabaseAdministrationCapabilities = Object.freeze({
   sessions: true,
@@ -83,6 +86,7 @@ export class MySqlAdministrationProvider implements DatabaseAdministrationProvid
       ...(optionalString(row.objectName) ? { object: optionalString(row.objectName)! } : {}),
       ...(optionalString(row.lockType) ? { lockType: optionalString(row.lockType)! } : {}),
       ...(optionalString(row.lockMode) ? { lockMode: optionalString(row.lockMode)! } : {}),
+      ...(optionalFiniteNumber(row.waitSeconds) !== undefined ? { waitSeconds: optionalFiniteNumber(row.waitSeconds)! } : {}),
       ...(optionalString(row.statementText) ? { statement: optionalString(row.statementText)! } : {}),
     }));
   }
@@ -128,4 +132,10 @@ function stringValue(value: unknown): string {
 function finiteNumber(value: unknown): number {
   const result = typeof value === "number" ? value : Number(value);
   return Number.isFinite(result) ? result : 0;
+}
+
+function optionalFiniteNumber(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === "") return undefined;
+  const result = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(result) ? result : undefined;
 }
