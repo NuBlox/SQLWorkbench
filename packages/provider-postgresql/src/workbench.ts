@@ -73,8 +73,8 @@ export const postgresqlCapabilities: DatabaseCapabilities = Object.freeze({
 export class PostgreSqlDatabaseProvider extends FoundationPostgreSqlDatabaseProvider {
   override readonly capabilities = postgresqlCapabilities;
   override readonly explorer: DatabaseExplorerProvider;
-  override readonly migrations: DatabaseMigrationProvider;
-  override readonly viewEngineering: DatabaseViewProvider;
+  readonly migrations: DatabaseMigrationProvider;
+  readonly viewEngineering: DatabaseViewProvider;
   private readonly controlPools = new WeakMap<DatabaseSession, Pool>();
 
   constructor() {
