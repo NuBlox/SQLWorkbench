@@ -2,6 +2,8 @@
   "name": "@nublox/sql-workbench-desktop",
   "version": "0.1.0-rc.1",
   "private": true,
+  "description": "NuBlox SQL Workbench desktop database engineering environment",
+  "author": "NuBlox",
   "type": "module",
   "main": "./dist/electron/main/main.js",
   "scripts": {
