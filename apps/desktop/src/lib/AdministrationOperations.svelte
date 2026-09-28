@@ -94,9 +94,10 @@
   }
 
   async function applySecurityChange(): Promise<void> {
-    if (!securityPreview) return;
+    const prepared = securityPreview;
+    if (!prepared) return;
     await run(async () => {
-      await window.nublox.administration.executeSecurity({ connectionId, change: securityChange(), fingerprint: securityPreview.guard.fingerprint, confirmation: securityConfirmation });
+      await window.nublox.administration.executeSecurity({ connectionId, change: securityChange(), fingerprint: prepared.guard.fingerprint, confirmation: securityConfirmation });
       securityPreview = undefined;
       securityConfirmation = "";
       await loadSecurity();
@@ -135,9 +136,10 @@
   }
 
   async function executeTransfer(): Promise<void> {
-    if (!transferPreview) return;
+    const prepared = transferPreview;
+    if (!prepared) return;
     await run(async () => {
-      const result = await window.nublox.administration.executeTransfer({ ...compareRequest(), fingerprint: transferPreview.guard.fingerprint, confirmation: transferConfirmation });
+      const result = await window.nublox.administration.executeTransfer({ ...compareRequest(), fingerprint: prepared.guard.fingerprint, confirmation: transferConfirmation });
       transferPreview = undefined;
       transferConfirmation = "";
       message = `Transferred ${result.rowsWritten} of ${result.sourceRows} source rows.`;
