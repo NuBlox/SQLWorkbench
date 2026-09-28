@@ -57,13 +57,7 @@ export interface DatabaseConnectionConfig {
   readonly options?: Readonly<Record<string, unknown>>;
 }
 
-export interface DatabaseTlsConfig {
-  readonly ca?: string;
-  readonly cert?: string;
-  readonly key?: string;
-  readonly rejectUnauthorized?: boolean;
-}
-
+export interface DatabaseTlsConfig { readonly ca?: string; readonly cert?: string; readonly key?: string; readonly rejectUnauthorized?: boolean; }
 export interface SessionHealth { readonly ok: boolean; readonly latencyMs?: number; readonly message?: string; }
 export interface DatabaseSession { readonly id: string; readonly providerId: string; readonly connectedAt: string; health(): Promise<SessionHealth>; close(): Promise<void>; }
 export interface QueryRequest { readonly sql: string; readonly values?: readonly unknown[] | Readonly<Record<string, unknown>>; readonly mode?: "text" | "prepared"; readonly timeoutMs?: number; readonly signal?: CancellationSignal; }
@@ -92,7 +86,6 @@ export interface DatabaseExplorerProvider {
 }
 
 export type DatabaseReferentialAction = "restrict" | "cascade" | "detach";
-
 export type DatabaseSchemaChangeOperation =
   | { readonly kind: "add-column"; readonly table: string; readonly column: string; readonly logicalType: string; readonly databaseType?: string; readonly nullable: boolean; readonly destructive: false }
   | { readonly kind: "drop-column"; readonly table: string; readonly column: string; readonly destructive: true }
@@ -102,55 +95,15 @@ export type DatabaseSchemaChangeOperation =
   | { readonly kind: "create-index"; readonly table: string; readonly name: string; readonly unique: boolean; readonly columns: readonly string[]; readonly destructive: false }
   | { readonly kind: "drop-index"; readonly table: string; readonly name: string; readonly destructive: true };
 
-export interface DatabaseSchemaChangePlan {
-  readonly source: string;
-  readonly catalog?: string;
-  readonly schema?: string;
-  readonly table: string;
-  readonly operations: readonly DatabaseSchemaChangeOperation[];
-  readonly destructive: boolean;
-}
-
-export interface DatabaseMigrationPreview {
-  readonly providerId: string;
-  readonly statements: readonly string[];
-  readonly destructive: boolean;
-  readonly warnings: readonly string[];
-}
-
-export interface DatabaseMigrationProvider {
-  readonly providerId: string;
-  preview(plan: DatabaseSchemaChangePlan): DatabaseMigrationPreview;
-}
-
+export interface DatabaseSchemaChangePlan { readonly source: string; readonly catalog?: string; readonly schema?: string; readonly table: string; readonly operations: readonly DatabaseSchemaChangeOperation[]; readonly destructive: boolean; }
+export interface DatabaseMigrationPreview { readonly providerId: string; readonly statements: readonly string[]; readonly destructive: boolean; readonly warnings: readonly string[]; }
+export interface DatabaseMigrationProvider { readonly providerId: string; preview(plan: DatabaseSchemaChangePlan): DatabaseMigrationPreview; }
 export type DatabaseViewAlgorithm = "undefined" | "merge" | "temptable";
 export type DatabaseViewSecurityType = "definer" | "invoker";
 export type DatabaseViewCheckOption = "none" | "cascaded" | "local";
-
-export interface DatabaseViewDefinition extends DatabaseNamespaceReference {
-  readonly name: string;
-  readonly selectSql: string;
-  readonly algorithm: DatabaseViewAlgorithm;
-  readonly definer?: string;
-  readonly securityType: DatabaseViewSecurityType;
-  readonly checkOption: DatabaseViewCheckOption;
-  readonly updatable?: boolean;
-}
-
-export interface DatabaseViewChangePlan extends DatabaseNamespaceReference {
-  readonly name: string;
-  readonly selectSql: string;
-  readonly algorithm: DatabaseViewAlgorithm;
-  readonly definer?: string;
-  readonly securityType: DatabaseViewSecurityType;
-  readonly checkOption: DatabaseViewCheckOption;
-}
-
-export interface DatabaseViewProvider {
-  readonly providerId: string;
-  load(session: DatabaseSession, view: ExplorerObjectReference): Promise<DatabaseViewDefinition>;
-  preview(plan: DatabaseViewChangePlan): DatabaseMigrationPreview;
-}
+export interface DatabaseViewDefinition extends DatabaseNamespaceReference { readonly name: string; readonly selectSql: string; readonly algorithm: DatabaseViewAlgorithm; readonly definer?: string; readonly securityType: DatabaseViewSecurityType; readonly checkOption: DatabaseViewCheckOption; readonly updatable?: boolean; }
+export interface DatabaseViewChangePlan extends DatabaseNamespaceReference { readonly name: string; readonly selectSql: string; readonly algorithm: DatabaseViewAlgorithm; readonly definer?: string; readonly securityType: DatabaseViewSecurityType; readonly checkOption: DatabaseViewCheckOption; }
+export interface DatabaseViewProvider { readonly providerId: string; load(session: DatabaseSession, view: ExplorerObjectReference): Promise<DatabaseViewDefinition>; preview(plan: DatabaseViewChangePlan): DatabaseMigrationPreview; }
 
 export interface DatabaseProvider {
   readonly id: string;
@@ -168,10 +121,23 @@ export interface DatabaseProvider {
 }
 
 export type {
+  DatabaseAccount,
   DatabaseAdministrationCapabilities,
+  DatabaseAdministrationPreview,
   DatabaseAdministrationProvider,
+  DatabaseBackupHook,
+  DatabaseDataTransferRequest,
+  DatabaseDataTransferResult,
   DatabaseLockWait,
+  DatabasePrivilegeGrant,
+  DatabasePrivilegeScope,
+  DatabaseRoleMembership,
+  DatabaseSecurityChange,
   DatabaseServerSession,
   DatabaseServerStatus,
   DatabaseServerVariable,
+  DatabaseStorageSummary,
+  DatabaseTableCompareRequest,
+  DatabaseTableCompareResult,
+  DatabaseTableData,
 } from "./administration.js";
