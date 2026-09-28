@@ -1,6 +1,7 @@
 import type {
   DatabaseAdministrationCapabilities,
   DatabaseAdministrationProvider,
+  DatabaseLockWait,
   DatabaseServerSession,
   DatabaseServerStatus,
   DatabaseServerVariable,
@@ -22,9 +23,29 @@ const PROCESSLIST_SQL = `SELECT
 FROM INFORMATION_SCHEMA.PROCESSLIST
 ORDER BY TIME DESC, ID ASC`;
 
+const LOCK_WAITS_SQL = `SELECT
+  waiting_thread.PROCESSLIST_ID AS waitingSessionId,
+  blocking_thread.PROCESSLIST_ID AS blockingSessionId,
+  CONCAT_WS('.', requested.OBJECT_SCHEMA, requested.OBJECT_NAME) AS objectName,
+  requested.LOCK_TYPE AS lockType,
+  requested.LOCK_MODE AS lockMode,
+  waiting_statement.SQL_TEXT AS statementText
+FROM performance_schema.data_lock_waits AS waits
+JOIN performance_schema.data_locks AS requested
+  ON requested.ENGINE = waits.ENGINE
+ AND requested.ENGINE_LOCK_ID = waits.REQUESTING_ENGINE_LOCK_ID
+JOIN performance_schema.threads AS waiting_thread
+  ON waiting_thread.THREAD_ID = waits.REQUESTING_THREAD_ID
+LEFT JOIN performance_schema.threads AS blocking_thread
+  ON blocking_thread.THREAD_ID = waits.BLOCKING_THREAD_ID
+LEFT JOIN performance_schema.events_statements_current AS waiting_statement
+  ON waiting_statement.THREAD_ID = waits.REQUESTING_THREAD_ID
+WHERE waiting_thread.PROCESSLIST_ID IS NOT NULL
+ORDER BY waiting_thread.PROCESSLIST_ID, blocking_thread.PROCESSLIST_ID`;
+
 export const mysqlAdministrationCapabilities: DatabaseAdministrationCapabilities = Object.freeze({
   sessions: true,
-  locks: false,
+  locks: true,
   serverVariables: true,
   serverStatus: true,
   users: false,
@@ -50,6 +71,18 @@ export class MySqlAdministrationProvider implements DatabaseAdministrationProvid
       command: stringValue(row.commandName),
       timeSeconds: finiteNumber(row.timeSeconds),
       ...(optionalString(row.stateName) ? { state: optionalString(row.stateName)! } : {}),
+      ...(optionalString(row.statementText) ? { statement: optionalString(row.statementText)! } : {}),
+    }));
+  }
+
+  async listLockWaits(session: DatabaseSession): Promise<readonly DatabaseLockWait[]> {
+    const rows = await this.#rows(session, LOCK_WAITS_SQL);
+    return rows.map((row) => ({
+      waitingSessionId: stringValue(row.waitingSessionId),
+      ...(optionalString(row.blockingSessionId) ? { blockingSessionId: optionalString(row.blockingSessionId)! } : {}),
+      ...(optionalString(row.objectName) ? { object: optionalString(row.objectName)! } : {}),
+      ...(optionalString(row.lockType) ? { lockType: optionalString(row.lockType)! } : {}),
+      ...(optionalString(row.lockMode) ? { lockMode: optionalString(row.lockMode)! } : {}),
       ...(optionalString(row.statementText) ? { statement: optionalString(row.statementText)! } : {}),
     }));
   }
