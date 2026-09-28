@@ -114,8 +114,8 @@ Provider priority does not alter the database-neutral core contract.
 - [x] positional SQL execution and JSON EXPLAIN baseline
 - [x] database/schema/table/column/index/foreign-key catalogue introspection baseline
 - [x] lazy namespace/object/table explorer baseline
-- [ ] routines, triggers, principals, roles and privileges
-- [ ] object search
+- [x] routines, triggers, principals, roles and privileges
+- [x] object search
 - [ ] query cancellation
 - [ ] migration and view-engineering adapters
 - [ ] administration/operations adapter

@@ -3,10 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/workbench.js",
+  "types": "./dist/workbench.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/workbench.d.ts",
+      "import": "./dist/workbench.js"
+    },
+    "./foundation": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
