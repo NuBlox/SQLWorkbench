@@ -12,7 +12,9 @@
     "start:built": "electron .",
     "test": "node --test test/*.test.mjs",
     "package": "pnpm build && electron-builder --publish never",
-    "package:dir": "pnpm build && electron-builder --dir --publish never"
+    "package:built": "electron-builder --publish never",
+    "package:dir": "pnpm build && electron-builder --dir --publish never",
+    "package:dir:built": "electron-builder --dir --publish never"
   },
   "dependencies": {
     "@nublox/workbench-catalog": "workspace:*",
