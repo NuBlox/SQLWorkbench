@@ -13,7 +13,7 @@ function fakeSession(providerId = "postgresql") {
   };
 }
 
-test("parity provider advertises implemented PostgreSQL catalog and execution capabilities", () => {
+test("parity provider advertises implemented PostgreSQL catalog, execution and schema capabilities", () => {
   const provider = new PostgreSqlDatabaseProvider();
   assert.equal(provider.id, "postgresql");
   assert.equal(provider.displayName, "PostgreSQL");
@@ -23,7 +23,11 @@ test("parity provider advertises implemented PostgreSQL catalog and execution ca
   assert.equal(postgresqlCapabilities.queryCancellation, true);
   assert.equal(postgresqlCapabilities.objectSearch, true);
   assert.equal(postgresqlCapabilities.privilegeIntrospection, true);
+  assert.equal(postgresqlCapabilities.migrationPreview, true);
+  assert.equal(postgresqlCapabilities.viewDefinitionEditing, true);
   assert.ok(provider.explorer);
+  assert.ok(provider.migrations);
+  assert.ok(provider.viewEngineering);
 });
 
 test("blank PostgreSQL object search short-circuits without a database query", async () => {
