@@ -51,6 +51,7 @@ test("MySQL administration provider maps blocking lock waits", async () => {
     async execute(_session, request) {
       assert.match(request.sql, /performance_schema\.data_lock_waits/u);
       assert.match(request.sql, /performance_schema\.data_locks/u);
+      assert.match(request.sql, /INFORMATION_SCHEMA\.INNODB_TRX/u);
       return execution([
         {
           waitingSessionId: 51,
@@ -58,6 +59,7 @@ test("MySQL administration provider maps blocking lock waits", async () => {
           objectName: "nublox.orders",
           lockType: "RECORD",
           lockMode: "X,REC_NOT_GAP",
+          waitSeconds: "12",
           statementText: "UPDATE orders SET status='paid' WHERE id=7",
         },
       ]);
@@ -70,6 +72,7 @@ test("MySQL administration provider maps blocking lock waits", async () => {
     object: "nublox.orders",
     lockType: "RECORD",
     lockMode: "X,REC_NOT_GAP",
+    waitSeconds: 12,
     statement: "UPDATE orders SET status='paid' WHERE id=7",
   }]);
 });
