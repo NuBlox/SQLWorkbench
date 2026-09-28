@@ -1,6 +1,7 @@
 import type { ConnectionManager } from "@nublox/workbench-core";
 import type {
   DatabaseAdministrationProvider,
+  DatabaseLockWait,
   DatabaseServerSession,
   DatabaseServerStatus,
   DatabaseServerVariable,
@@ -15,6 +16,12 @@ export class DesktopAdministrationService {
     return administration.listSessions(session);
   }
 
+  async listLockWaits(connectionId: string): Promise<readonly DatabaseLockWait[]> {
+    const { administration, session } = this.#require(connectionId, "locks");
+    if (!administration.listLockWaits) throw new Error(`Database provider '${administration.providerId}' advertises locks but does not implement lock inspection.`);
+    return administration.listLockWaits(session);
+  }
+
   async listVariables(connectionId: string, filter?: string): Promise<readonly DatabaseServerVariable[]> {
     const { administration, session } = this.#require(connectionId, "serverVariables");
     return administration.listServerVariables(session, normalizeFilter(filter));
@@ -27,7 +34,7 @@ export class DesktopAdministrationService {
 
   #require(
     connectionId: string,
-    capability: "sessions" | "serverVariables" | "serverStatus",
+    capability: "sessions" | "locks" | "serverVariables" | "serverStatus",
   ): { administration: DatabaseAdministrationProvider; session: DatabaseSession } {
     const normalized = connectionId.trim();
     if (!normalized) throw new Error("Connection id cannot be empty.");
