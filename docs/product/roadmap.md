@@ -116,7 +116,7 @@ Provider priority does not alter the database-neutral core contract.
 - [x] lazy namespace/object/table explorer baseline
 - [x] routines, triggers, principals, roles and privileges
 - [x] object search
-- [ ] query cancellation
+- [x] query cancellation and per-query timeout control
 - [ ] migration and view-engineering adapters
 - [ ] administration/operations adapter
 - [ ] desktop provider registration and connection UX
