@@ -86,16 +86,30 @@ The application UX and feature prioritisation should be informed by the database
 - [x] sessions/processes
 - [x] locks and blocking
 - [x] server variables/status
-- [ ] users, roles and fine-grained privileges
-- [ ] storage/capacity inspection
-- [ ] import/export
-- [ ] backup/restore hooks where supported
-- [ ] data compare and transfer
+- [x] users, roles and fine-grained privileges
+- [x] storage/capacity inspection
+- [x] import/export
+- [x] backup/restore hooks where supported
+- [x] data compare and transfer
 - [x] provider capability contracts for administration/operations features
+
+## RC1 — Release candidate hardening
+
+- [x] product version aligned at `0.2.0-rc.1`
+- [x] guarded administration mutations with preview fingerprints and confirmation phrases
+- [x] bounded data import/export and transfer limits
+- [x] native desktop packaging configuration for macOS, Windows and Linux
+- [x] cross-platform release-candidate workflow
+- [x] release notes and explicit signing/notarization status
+- [ ] release-candidate branch build/test green
+- [ ] native package jobs green on all three operating systems
+- [ ] merge release candidate to `main`
+- [ ] independent post-merge `main` CI green
+- [ ] GitHub prerelease `v0.2.0-rc.1` created with artifacts
 
 ## Provider expansion
 
-After the MySQL product path is stable:
+After the MySQL release candidate is stabilized:
 
 1. PostgreSQL
 2. SQLite
