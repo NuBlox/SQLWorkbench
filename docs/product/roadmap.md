@@ -105,11 +105,25 @@ The application UX and feature prioritisation should be informed by the database
 
 ## Provider expansion
 
-After the MySQL release-candidate path is stable:
-
-1. PostgreSQL
-2. SQLite
-3. SQL Server
-4. Oracle
-
 Provider priority does not alter the database-neutral core contract.
+
+### PostgreSQL
+
+- [x] provider package and `pg` driver boundary
+- [x] secure pooled connection/session lifecycle
+- [x] positional SQL execution and JSON EXPLAIN baseline
+- [x] database/schema/table/column/index/foreign-key catalogue introspection baseline
+- [x] lazy namespace/object/table explorer baseline
+- [ ] routines, triggers, principals, roles and privileges
+- [ ] object search
+- [ ] query cancellation
+- [ ] migration and view-engineering adapters
+- [ ] administration/operations adapter
+- [ ] desktop provider registration and connection UX
+- [ ] integration tests against supported PostgreSQL versions
+
+### Next providers
+
+1. SQLite
+2. SQL Server
+3. Oracle
