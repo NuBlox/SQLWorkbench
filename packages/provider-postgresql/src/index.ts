@@ -1,4 +1,4 @@
-import { Pool, type PoolClient, type QueryResult } from "pg";
+import { Pool, type QueryResult } from "pg";
 import type {
   ColumnDefinition,
   DatabaseCatalog,
@@ -105,6 +105,7 @@ export class PostgreSqlDatabaseProvider implements DatabaseProvider {
     const postgresSession = requirePostgreSqlSession(session);
     const depth = options.depth ?? "full";
     const version = await postgresSession.pool.query<VersionRow>(VERSION_SQL);
+    const databaseName = version.rows[0]?.databaseName;
     const namespaces = await loadNamespaces(postgresSession, options.includeSystem ?? false);
     const selectedSchemas = filterRequestedSchemas(namespaces.map((row) => row.schemaName), options.catalogs);
 
@@ -121,11 +122,11 @@ export class PostgreSqlDatabaseProvider implements DatabaseProvider {
     const catalogNamespaces: DatabaseNamespace[] = namespaces
       .filter((row) => selectedSchemas.includes(row.schemaName))
       .map((row) => ({
-        catalog: version.rows[0]?.databaseName,
+        ...(databaseName ? { catalog: databaseName } : {}),
         schema: row.schemaName,
         system: isSystemSchema(row.schemaName),
         tables: (tablesBySchema.get(row.schemaName) ?? []).map((table) => mapTable(
-          version.rows[0]?.databaseName,
+          databaseName,
           table,
           columnsByTable.get(tableKey(table.schemaName, table.tableName)) ?? [],
           indexesByTable.get(tableKey(table.schemaName, table.tableName)) ?? [],
@@ -150,17 +151,18 @@ export class PostgreSqlDatabaseProvider implements DatabaseProvider {
     if (request.signal) {
       throw new Error("PostgreSQL query cancellation is not yet enabled in the provider foundation.");
     }
+    if (request.timeoutMs !== undefined) {
+      throw new Error("PostgreSQL per-query timeout is not yet enabled in the provider foundation.");
+    }
     if (request.values && !Array.isArray(request.values)) {
       throw new Error("PostgreSQL provider currently accepts positional parameter arrays only.");
     }
 
     const startedAt = new Date();
     const startedMs = Date.now();
-    const result = await postgresSession.pool.query({
-      text: request.sql,
-      values: request.values ? [...request.values] : undefined,
-      ...(request.timeoutMs !== undefined ? { query_timeout: request.timeoutMs } : {}),
-    });
+    const result: QueryResult = request.values
+      ? await postgresSession.pool.query(request.sql, [...request.values])
+      : await postgresSession.pool.query(request.sql);
     const finishedAt = new Date();
 
     return {
@@ -188,9 +190,10 @@ class PostgreSqlExplorerProvider implements DatabaseExplorerProvider {
   async listNamespaces(session: DatabaseSession, options: ExplorerNamespaceOptions = {}): Promise<readonly DatabaseNamespaceSummary[]> {
     const postgresSession = requirePostgreSqlSession(session);
     const version = await postgresSession.pool.query<VersionRow>(VERSION_SQL);
+    const databaseName = version.rows[0]?.databaseName;
     const rows = await loadNamespaces(postgresSession, options.includeSystem ?? false);
     return rows.map((row) => ({
-      catalog: version.rows[0]?.databaseName,
+      ...(databaseName ? { catalog: databaseName } : {}),
       schema: row.schemaName,
       system: isSystemSchema(row.schemaName),
     }));
@@ -200,9 +203,10 @@ class PostgreSqlExplorerProvider implements DatabaseExplorerProvider {
     const postgresSession = requirePostgreSqlSession(session);
     const schema = requireSchema(namespace);
     const version = await postgresSession.pool.query<VersionRow>(VERSION_SQL);
+    const databaseName = version.rows[0]?.databaseName;
     const rows = await postgresSession.pool.query<TableRow>(TABLE_FOR_SCHEMA_SQL, [schema]);
     return rows.rows.map((row) => ({
-      catalog: version.rows[0]?.databaseName,
+      ...(databaseName ? { catalog: databaseName } : {}),
       schema: row.schemaName,
       name: row.tableName,
       kind: row.tableType === "VIEW" ? "view" : "table",
