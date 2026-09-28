@@ -1,6 +1,6 @@
 {
   "name": "@nublox/sql-workbench",
-  "version": "0.1.0",
+  "version": "0.2.0-rc.1",
   "private": true,
   "type": "module",
   "license": "UNLICENSED",
@@ -11,7 +11,8 @@
   "scripts": {
     "build": "pnpm -r --sort --if-present build",
     "test": "pnpm -r --sort --if-present test",
-    "check": "pnpm build && pnpm test"
+    "check": "pnpm build && pnpm test",
+    "package:desktop": "pnpm --filter @nublox/sql-workbench-desktop package"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
