@@ -31,3 +31,35 @@ jobs:
 
       - name: Verify desktop package assembly
         run: pnpm --filter @nublox/sql-workbench-desktop package:dir
+
+  package-release-candidate:
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/')
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            command: package:mac
+          - os: ubuntu-latest
+            command: package:linux
+          - os: windows-latest
+            command: package:win
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build platform artifact
+        run: pnpm --filter @nublox/sql-workbench-desktop ${{ matrix.command }}
