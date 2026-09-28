@@ -32,7 +32,7 @@ The application UX and feature prioritisation should be informed by the database
 - [x] messages and execution timing
 - [x] query history
 - [x] CSV/JSON export
-- [x] file-protocol-safe prerendered desktop entry point
+- [x] secure custom-protocol prerendered desktop entry point
 - [x] renderer build-output regression test
 
 ## M2 — Database explorer
@@ -86,16 +86,26 @@ The application UX and feature prioritisation should be informed by the database
 - [x] sessions/processes
 - [x] locks and blocking
 - [x] server variables/status
-- [ ] users, roles and fine-grained privileges
-- [ ] storage/capacity inspection
-- [ ] import/export
-- [ ] backup/restore hooks where supported
-- [ ] data compare and transfer
+- [x] users, roles and fine-grained privileges
+- [x] storage/capacity inspection
+- [x] logical table import/export
+- [x] backup/restore hooks where supported (Workbench JSON available; external `mysqldump` explicitly unconfigured)
+- [x] data compare and guarded transfer
 - [x] provider capability contracts for administration/operations features
+
+## 0.1.0 Release Candidate
+
+- [x] MySQL product path complete through M6
+- [x] npm package boundaries for `@nublox/mysql` and `@nublox/metaobject`
+- [x] startup diagnostics and secure renderer protocol
+- [x] guarded destructive schema/security/data operations
+- [x] installable desktop packaging configuration
+- [x] cross-platform RC artifact workflow
+- [ ] signed/notarized production distribution (post-RC hardening)
 
 ## Provider expansion
 
-After the MySQL product path is stable:
+After the MySQL release-candidate path is stable:
 
 1. PostgreSQL
 2. SQLite
